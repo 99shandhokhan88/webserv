@@ -25,7 +25,7 @@
 
 ---
 
-### **2. Maryem - Socket & Server Core**
+### **2. Meryem - Socket & Server Core**
 **Responsabilità:** Implementare il core del server, gestione delle connessioni e I/O multiplexing.
 
 #### **Task Specifici:**
