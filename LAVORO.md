@@ -93,11 +93,11 @@ if (pid == 0) {
 ### **Integrazione e Flusso di Lavoro**
 1. **Inizializzazione:**
    - Venelin legge il file di configurazione e genera una lista di `ServerConfig`.
-   - Maryem crea un socket per ogni `ServerConfig` e li aggiunge a `poll_fds`.
+   - Meryem crea un socket per ogni `ServerConfig` e li aggiunge a `poll_fds`.
    - Fbiondo prepara gli handler per CGI e file statici.
 
 2. **Event Loop:**
-   - Maryem monitora eventi con `poll()`.
+   - Meryem monitora eventi con `poll()`.
    - Se evento su un socket server: `accept()` nuova connessione e crea `Client`.
    - Se evento su client: delega a Fbiondo per leggere la richiesta e generare risposta.
 
