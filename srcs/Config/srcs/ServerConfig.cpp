@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/20 18:13:45 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/02/22 00:16:15 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -144,4 +144,15 @@ size_t ServerConfig::getClientMaxBodySize() const {
 
 const std::map<int, std::string>& ServerConfig::getErrorPages() const {
     return error_pages;
+}
+
+
+// Implementazione di getRoot()
+const std::string& ServerConfig::getRoot() const {
+    return this->root;
+}
+
+// Implementazione di getIndex()
+const std::string& ServerConfig::getIndex() const {
+    return this->index;
 }

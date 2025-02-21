@@ -1,64 +1,31 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   MimeTypes.cpp                                      :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/02/18 21:50:09 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 19:57:41 by vzashev          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+#include "../incs/MimeTypes.hpp"
 
+// Inizializzazione membro statico
+std::map<std::string, std::string> MimeTypes::_types;
 
-
-#include "MimeTypes.hpp"
-
-
-// Map of file extensions to MIME types
-std::map<std::string, std::string> MimeTypes::mimeTypes;
-
-
-// Get the MIME type for a file extension
-std::string MimeTypes::getMimeType(const std::string& extension)
-{
-    // Initialize the MIME types map
-    if (mimeTypes.empty())
-    {
-        initializeMimeTypes();  // Initialize the MIME types
-    }
-    
-    // Find the MIME type for the extension
-    std::map<std::string, std::string>::const_iterator it = mimeTypes.find(extension);
-    
-    // Return the MIME type if found
-    if (it != mimeTypes.end())
-    {
-        return  (it->second);  // Return the MIME type
-    }
-
-    // Return the default MIME type if not found
-    return  ("application/octet-stream"); // Default MIME type
-    
+void MimeTypes::initTypes() {
+    _types[".html"] = "text/html";
+    _types[".css"] = "text/css";
+    _types[".js"] = "application/javascript";
+    _types[".png"] = "image/png";
+    _types[".jpg"] = "image/jpeg";
+    _types[".jpeg"] = "image/jpeg";
+    _types[".gif"] = "image/gif";
 }
 
-
-// Initialize the MIME types map
-void MimeTypes::initializeMimeTypes()
-{
-    mimeTypes[".html"] = "text/html";
-    mimeTypes[".htm"] = "text/html";
-    mimeTypes[".css"] = "text/css";
-    mimeTypes[".js"] = "application/javascript";
-    mimeTypes[".json"] = "application/json";
-    mimeTypes[".jpg"] = "image/jpeg";
-    mimeTypes[".jpeg"] = "image/jpeg";
-    mimeTypes[".png"] = "image/png";
-    mimeTypes[".gif"] = "image/gif";
-    mimeTypes[".txt"] = "text/plain";
-    mimeTypes[".pdf"] = "application/pdf";
-    mimeTypes[".zip"] = "application/zip";
-    mimeTypes[".xml"] = "application/xml";
-    mimeTypes[".mp3"] = "audio/mpeg";
-    mimeTypes[".mp4"] = "video/mp4";
+std::string MimeTypes::getType(const std::string& filename) {
+    static bool initialized = false;
+    if (!initialized) {
+        initTypes();
+        initialized = true;
+    }
+    
+    size_t dot_pos = filename.find_last_of(".");
+    if (dot_pos != std::string::npos) {
+        std::string extension = filename.substr(dot_pos);
+        if (_types.find(extension) != _types.end()) {
+            return _types[extension];
+        }
+    }
+    return "text/plain";
 }

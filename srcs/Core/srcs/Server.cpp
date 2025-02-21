@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/20 19:41:01 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/02/21 18:10:34 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include "../../HTTP/incs/Request.hpp"
 #include "../../HTTP/incs/Response.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
+#include "../../Utils/incs/MimeTypes.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -153,19 +154,22 @@ void Server::handleClient(int client_fd) {
     std::cout << "Serving file: " << full_path << std::endl;
 
     std::ifstream file(full_path.c_str());
-if (file.good()) {
-    std::string content((std::istreambuf_iterator<char>(file)),
-                        std::istreambuf_iterator<char>());
-    std::cout << "Content size: " << content.size() << std::endl;
-    if (content.size() < 100)
-        std::cout << "Content: " << content << std::endl;
-    std::string response = "HTTP/1.1 200 OK\r\n"
-                           "Content-Length: " + toString(content.size()) + "\r\n"
-                           "Content-Type: text/html\r\n"
-                           "Connection: close\r\n\r\n" + content;
-    send(client_fd, response.c_str(), response.size(), 0);
-}
- else {
+    if (file.good()) {
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        std::cout << "Content size: " << content.size() << std::endl;
+        if (content.size() < 100)
+            std::cout << "Content: " << content << std::endl;
+
+        // Get MIME type
+        std::string content_type = MimeTypes::getType(full_path);
+
+        std::string response = "HTTP/1.1 200 OK\r\n"
+                               "Content-Length: " + toString(content.size()) + "\r\n"
+                               "Content-Type: " + content_type + "\r\n"
+                               "Connection: close\r\n\r\n" + content;
+        send(client_fd, response.c_str(), response.size(), 0);
+    } else {
         // Serve 404 error page
         std::map<int, std::string>::const_iterator it = config.getErrorPages().find(404);
         std::string error_page;
@@ -186,7 +190,6 @@ if (file.good()) {
 
     removeClient(client_fd);
 }
-
 
 void Server::run() {
     std::cout << "Server entering main loop..." << std::endl;
@@ -233,14 +236,4 @@ void Server::setPollEvents(size_t index, short events) {
 
 int Server::getServerFd() const {
     return server_fd;
-}
-
-// These definitions are provided here for convenience.
-// Ideally, they should be placed in ServerConfig.cpp.
-const std::string& ServerConfig::getRoot() const {
-    return root;
-}
-
-const std::string& ServerConfig::getIndex() const {
-    return index;
 }
