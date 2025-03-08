@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/22 00:16:15 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/03/09 00:33:47 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,16 @@ ServerConfig::ServerConfig() :
 
 ServerConfig::ServerConfig(const std::string& configFilePath) : port(8080), root(""), index("") {
     loadConfig(configFilePath);
+}
+
+
+// ServerConfig.cpp
+const std::string& ServerConfig::getUploadDir() const {
+    return upload_dir;  // Return actual member variable
+}
+
+void ServerConfig::setUploadDir(const std::string& dir) {
+    upload_dir = dir;
 }
 
 void ServerConfig::loadConfig(const std::string& configFilePath)

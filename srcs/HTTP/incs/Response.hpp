@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:18:13 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 23:38:05 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/02/27 19:41:49 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,7 @@ class Response
                     void setHeader(const std::string& key, const std::string& value);
                 
                     // Set the response body
-                    void setBody(const std::string& body);
+                    void setBody(const std::string& _body);
 
                 
                     // Generate the HTTP response
@@ -61,7 +61,7 @@ class Response
                     std::map<std::string, std::string> headers;
 
                     //  Response body
-                    std::string body;
+                    std::string _body;
                     
 };
 

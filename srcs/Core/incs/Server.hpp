@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/09 15:43:39 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/20 18:45:59 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/03/09 00:22:03 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,16 +34,33 @@ private:
     ServerConfig config;
     int server_fd;
     int port;
+    void handleStaticRequest(Client* client);
     std::vector<pollfd> poll_fds;
     std::map<int, Client> clients;
+
+
+
+
+    void handleGetRequest(Client* client);
+    void handlePostRequest(Client* client);
+    void handleDirectoryListing(Client* client, const std::string& path);
+    void sendFileResponse(Client* client, const std::string& path);
 
 public:
     Server(const ServerConfig& config);
     Server(int port_number) : port(port_number) {} // Fixed: added curly braces instead of semicolon
     ~Server();
 
+
+    void sendResponse(Client* client, int status, const std::string& content);
+    void sendErrorResponse(Client* client, int errorCode);
+
+
     bool init();  // Move the implementation to the .cpp file
 
+
+
+    void processRequest(Client* client);  // Add this line
     void start();
     void removeClient(int client_fd);
     void acceptNewConnection();

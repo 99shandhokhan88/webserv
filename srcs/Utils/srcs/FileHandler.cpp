@@ -1,83 +1,55 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   FileHandler.cpp                                    :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/02/15 22:48:11 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 23:48:08 by vzashev          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+// FileHandler.cpp
+#include "FileHandler.hpp"
+#include <dirent.h>
+#include <sys/stat.h>
+#include <errno.h>
 
-
-
-#include "FileHandler.hpp"          // Local header
-#include <sys/stat.h>               // Standard library
-
-// Read a file and return its contents
-std::string FileHandler::readFile(const std::string& path)
-{
+// List directory contents (filter out . and ..)
+std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
+    std::vector<std::string> files;
+    DIR* dir = opendir(path.c_str());
     
-    // Open the file
+    if (dir) {
+        struct dirent* ent;
+        while ((ent = readdir(dir)) != NULL) {
+            if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0)
+                files.push_back(ent->d_name);
+        }
+        closedir(dir);
+    }
+    return files;
+}
+
+// Create directory with error checking
+bool FileHandler::createDirectory(const std::string& path) {
+    return mkdir(path.c_str(), 0755) == 0 || errno == EEXIST;
+}
+
+// Read file contents
+std::string FileHandler::readFile(const std::string& path) {
     std::ifstream file(path.c_str(), std::ios::binary);
-
-    // Check if the file was opened successfully
-    if (!file.is_open())
-    {
-
-        // Throw an exception if the file could not be opened
-        throw   (std::runtime_error("Failed to open file: " + path));
-    
-    }
-
-    // Read the file contents and store them in a string using an iterator and the file stream
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    
-    // Return the file contents
-    return  (content);
+    if (!file.is_open()) throw std::runtime_error("Cannot open file: " + path);
+    return std::string((std::istreambuf_iterator<char>(file)), 
+                      std::istreambuf_iterator<char>());
 }
 
-
-// Write data to a file
-void FileHandler::writeFile(const std::string& path, const std::string& data)
-{
-
-    // Open the file for writing
-    std::ofstream file(path.c_str(), std::ios::binary);
-
-    // Check if the file was opened successfully
-    if (!file.is_open())
-    {
-
-        // Throw an exception if the file could not be opened
-        throw   (std::runtime_error("Failed to open file for writing: " + path));
-        
-    }
-
-    file << data;   // Write the data to the file
+// Write file with success/failure return
+bool FileHandler::writeFile(const std::string& path, const std::string& content) {
+    std::ofstream file(path.c_str());
+    if (!file) return false;
+    file << content;
+    return file.good();
 }
 
-
-// Check if a file exists
-bool FileHandler::fileExists(const std::string& path)
-{
-    struct stat buffer; // File status buffer
-    
-    return  (stat(path.c_str(), &buffer) == 0);  // Check if the file exists
+// Check file existence
+bool FileHandler::fileExists(const std::string& path) {
+    struct stat buffer;
+    return stat(path.c_str(), &buffer) == 0;
 }
 
-
-// Check if a path is a directory
-bool FileHandler::isDirectory(const std::string& path)
-{
-    struct stat buffer; // File status buffer
-    
-    if (stat(path.c_str(), &buffer) == 0)
-    {
-        return  (S_ISDIR(buffer.st_mode));   // Return false if the stat function fails
-    }
-    return  (false);  // Check if the path is a directory
+// Check if path is directory
+bool FileHandler::isDirectory(const std::string& path) {
+    struct stat buffer;
+    if (stat(path.c_str(), &buffer) != 0) return false;
+    return S_ISDIR(buffer.st_mode);
 }
-
-// End of srcs/Utils/srcs/FileHandler.cpp

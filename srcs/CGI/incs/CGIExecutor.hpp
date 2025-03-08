@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 11:38:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/19 17:35:27 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/02/27 17:52:40 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,45 +15,40 @@
 #ifndef CGIEXECUTOR_HPP
 #define CGIEXECUTOR_HPP
 
-#include "Request.hpp"          // From HTTP
-#include "ServerConfig.hpp"     // From Config
+#include "../../HTTP/incs/Request.hpp"
+#include "../../Config/incs/LocationConfig.hpp"
 
-#include <string>
 #include <map>
+#include <string>
+#include <exception>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <fcntl.h>
 #include <cstdlib>
+#include <sstream>
 #include <cstring>
 #include <iostream>
-#include <sstream>
-#include <stdexcept>
 #include <cerrno>
 
-class CGIExecutor {
-    public:
-        CGIExecutor();
-        ~CGIExecutor();
-
-        // Execute a CGI script
-        std::string execute(
-            const std::string& script_path,
-            const std::map<std::string, std::string>& env_vars,
-            const std::string& request_body
-        );
-
-        void writeToPipe(int pipe_in[2], const std::string& request_body);
-
-    private:
-        // Set up environment variables for the CGI script
-        void setupEnvironment(const std::map<std::string, std::string>& env_vars);
-
-        // Execute the CGI script and capture its output
-        std::string executeScript(const std::string& script_path, const std::string& request_body);
-
-        // Helper function to read from a file descriptor
-        std::string readFromFd(int fd);
+class CGIException : public std::exception {
+    std::string _msg;
+public:
+    explicit CGIException(const std::string& message) : _msg(message) {}
+    virtual ~CGIException() throw() {}
+    virtual const char* what() const throw() { return _msg.c_str(); }
 };
 
-#endif // CGIEXECUTOR_HPP
+class CGIExecutor {
+    const Request& _request;
+    const LocationConfig& _location;
+    std::string _output;
+
+public:
+    CGIExecutor(const Request& req, const LocationConfig& loc);
+    ~CGIExecutor();
+    
+    std::string execute();
+};
+
+#endif
+
 

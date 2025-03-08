@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 18:50:57 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 23:41:32 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/03/09 00:45:47 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,53 +29,48 @@ Request::~Request()
 }
 
 
-// Parse the request data
-void    Request::parse(const char* data, size_t length)
-{
-    
-    // Convert the request data to a string
-    std::string request_data(data, length);
+void Request::parse(const char* data, size_t length) {
+    raw_data.assign(data, length);
+    std::istringstream iss(raw_data);
+    std::string request_line;
 
-    // Create a string stream from the request data
-    std::istringstream iss(request_data);
+    // Extract request line
+    std::getline(iss, request_line);
+    size_t method_end = request_line.find(' ');
+    size_t path_end = request_line.find(' ', method_end + 1);
 
-    // Line buffer
-    std::string line;
-    
-
-    // Get the request line
-    std::getline(iss, line);
-
-    // Parse the request line
-    parseRequestLine(line);
-    
-
-    // Parse the headers
-    while (std::getline(iss, line)  && !line.empty())
-    {
-        parseHeaderLine(line);
+    if (method_end != std::string::npos && path_end != std::string::npos) {
+        // CORRECTED: Use _method and _path instead of method/path
+        _method = request_line.substr(0, method_end);
+        _path = request_line.substr(method_end + 1, path_end - method_end - 1);
+        
+        // Convert method to uppercase
+        for (size_t i = 0; i < _method.length(); ++i) {
+            _method[i] = toupper(_method[i]);
+        }
+    } else {
+        throw std::runtime_error("Invalid request line");
     }
 
+    // Parse headers
+    std::string header;
+    while (std::getline(iss, header) && header != "\r") {
+        size_t colon = header.find(':');
+        if (colon != std::string::npos) {
+            std::string key = header.substr(0, colon);
+            std::string value = header.substr(colon + 2, header.length() - colon - 3);
+            headers[key] = value;
+        }
+    }
 
-    // Parse the body (if any)
-    std::ostringstream body_stream; // Body stream
-    body_stream << iss.rdbuf(); // Read the remaining data into the body stream
-    body = body_stream.str();   // Get the body as a string
-    
+    // CORRECTED: Use _body instead of body
+    size_t header_end = raw_data.find("\r\n\r\n");
+    if (header_end != std::string::npos) {
+        _body = raw_data.substr(header_end + 4);
+    }
 }
 
 
-// Parse the request line
-void Request::parseRequestLine(const std::string& line)
-{
-    
-    // Create a string stream from the request line
-    std::istringstream iss(line);
-
-    // Parse the request line
-    iss >> method >> uri >> version;
-    
-}
 
 
 // Parse a header line
@@ -112,70 +107,53 @@ void Request::parseHeaderLine(const std::string& line)
 
 
 // Setters
-void Request::setMethod(const std::string& method) {
-    this->method = method;
+void Request::setMethod(const std::string& _method) {
+    this->_method = _method;
 }
 
-void Request::setUri(const std::string& uri) {
-    this->uri = uri;
+void Request::setUri(const std::string& _uri) {
+    this->_uri = _uri;
 }
 
-void Request::setVersion(const std::string& version) {
-    this->version = version;
+void Request::setVersion(const std::string& _version) {
+    this->_version = _version;
 }
 
 void Request::setHeader(const std::string& key, const std::string& value) {
     headers[key] = value;
 }
 
-void Request::setBody(const std::string& body) {
-    this->body = body;
+void Request::setBody(const std::string& _body) {
+    this->_body = _body;
 }
 
 
 
-// Getters
-
-// Get the request method
-const std::string& Request::getMethod() const
-{
-    
-    return  (method);  // Return the request method
-
-}
 
 
-// Get the request URI
-const std::string& Request::getUri() const
-{
-    
-    return  (uri);  // Return the request URI
-
-}
 
 
-// Get the request version
-const std::string& Request::getVersion() const
-{
-    return  (version);  // Return the request version
-}
 
 
-// Get the request headers
-const std::map<std::string, std::string>& Request::getHeaders() const
-{
-    
-    return  (headers);  // Return the request headers
-    
-}
+void Request::parseRequestLine(const std::string& line) {
+    size_t method_end = line.find(' ');
+    size_t path_end = line.find(' ', method_end + 1);
+    size_t version_end = line.find("\r\n");
 
+    if (method_end != std::string::npos && path_end != std::string::npos) {
+        _method = line.substr(0, method_end);
+        _uri = line.substr(method_end + 1, path_end - method_end - 1);
+        _version = line.substr(path_end + 1, version_end - path_end - 1);
 
-// Get the request body
-const std::string& Request::getBody() const
-{
-    
-    return  (body); // Return the request body
-    
+        // Parse query parameters
+        size_t query_pos = _uri.find('?');
+        if (query_pos != std::string::npos) {
+            _path = _uri.substr(0, query_pos);
+            _query = _uri.substr(query_pos + 1);
+        } else {
+            _path = _uri;
+        }
+    }
 }
 
 

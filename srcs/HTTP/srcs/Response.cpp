@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:34:31 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 23:38:00 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/02/27 19:47:05 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,10 +52,10 @@ void Response::setHeader(const std::string& key, const std::string& value)
 
 
 // Set the response body
-void Response::setBody(const std::string& body)
+void Response::setBody(const std::string& _body)
 {
     
-    this->body = body;  // Set the body
+    this->_body = _body;  // Set the body
     
 }
 
@@ -87,7 +87,7 @@ std::string Response::generate() const
     oss << "\r\n";
 
     // Body
-    oss << body;
+    oss << _body;
 
     // Return the response as a string
     return  (oss.str());

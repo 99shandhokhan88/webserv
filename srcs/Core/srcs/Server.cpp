@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/21 18:10:34 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/03/09 00:41:29 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,11 @@
 #include "../../HTTP/incs/Response.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
 #include "../../Utils/incs/MimeTypes.hpp"
+
+
+
+#include "../../CGI/incs/CGIExecutor.hpp"
+
 
 #include <iostream>
 #include <cstring>
@@ -36,6 +41,19 @@ std::string toString(const T& value) {
     std::ostringstream oss;
     oss << value;
     return oss.str();
+}
+
+void Server::handleStaticRequest(Client* client) {
+    // Move the existing file serving logic here from handleClient
+    // (from line 145-207 in your Server.cpp)
+    char buffer[1024];
+    ssize_t bytes_read = recv(client->fd, buffer, sizeof(buffer), 0);
+    if (bytes_read <= 0) {
+        removeClient(client->fd);
+        return;
+    }
+
+    // ... rest of the file serving logic
 }
 
 Server::Server(const ServerConfig& config) : config(config), server_fd(-1) {
@@ -120,76 +138,135 @@ void Server::acceptNewConnection() {
 }
 
 void Server::handleClient(int client_fd) {
+    Client& client = clients[client_fd];
     char buffer[1024];
+    
     ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
     if (bytes_read <= 0) {
         removeClient(client_fd);
         return;
     }
 
-    // Parse the HTTP request
-    std::string request(buffer, bytes_read);
-    std::istringstream iss(request);
-    std::string method, path, protocol;
-    iss >> method >> path >> protocol;
+    client.request_data.append(buffer, bytes_read);
 
-    // Normalize the request path: remove the leading '/' if present
-    std::string normalized_path = path;
-    if (!normalized_path.empty() && normalized_path[0] == '/') {
-        normalized_path = normalized_path.substr(1);
+    // Check for complete headers
+    size_t header_end = client.request_data.find("\r\n\r\n");
+    if (header_end == std::string::npos) {
+        return; // Wait for more data
     }
 
-    // Get the root directory from the config and ensure it ends with '/'
-    std::string root = config.getRoot();
-    if (root.empty() || root[root.size() - 1] != '/') {
-        root += "/";
-    }
-
-    // Construct the full file path
-    std::string full_path = root + normalized_path;
-    if (!path.empty() && path[path.size() - 1] == '/') {
-        full_path += config.getIndex();
-    }
-
-    std::cout << "Serving file: " << full_path << std::endl;
-
-    std::ifstream file(full_path.c_str());
-    if (file.good()) {
-        std::string content((std::istreambuf_iterator<char>(file)),
-                            std::istreambuf_iterator<char>());
-        std::cout << "Content size: " << content.size() << std::endl;
-        if (content.size() < 100)
-            std::cout << "Content: " << content << std::endl;
-
-        // Get MIME type
-        std::string content_type = MimeTypes::getType(full_path);
-
-        std::string response = "HTTP/1.1 200 OK\r\n"
-                               "Content-Length: " + toString(content.size()) + "\r\n"
-                               "Content-Type: " + content_type + "\r\n"
-                               "Connection: close\r\n\r\n" + content;
-        send(client_fd, response.c_str(), response.size(), 0);
-    } else {
-        // Serve 404 error page
-        std::map<int, std::string>::const_iterator it = config.getErrorPages().find(404);
-        std::string error_page;
-        if (it != config.getErrorPages().end()) {
-            error_page = root + it->second;
-        } else {
-            error_page = root + "404.html"; // Fallback default
+    try {
+        client.request.parse(client.request_data.c_str(), client.request_data.size());
+        
+        // Validate minimum request requirements
+        if (client.request.getMethod().empty() || client.request.getPath().empty()) {
+            throw std::runtime_error("Invalid request structure");
         }
-        std::ifstream error_file(error_page.c_str());
-        std::string error_content((std::istreambuf_iterator<char>(error_file)),
-                                  std::istreambuf_iterator<char>());
-        std::string response = "HTTP/1.1 404 Not Found\r\n"
-                               "Content-Length: " + toString(error_content.size()) + "\r\n"
-                               "Content-Type: text/html\r\n"
-                               "Connection: close\r\n\r\n" + error_content;
-        send(client_fd, response.c_str(), response.size(), 0);
+    } catch (const std::exception& e) {
+        std::cerr << "Request parsing error: " << e.what() << std::endl;
+        sendErrorResponse(&client, 400);
+        removeClient(client_fd);
+        return;
     }
 
-    removeClient(client_fd);
+    // Handle keep-alive
+    std::map<std::string, std::string> headers = client.request.getHeaders();
+    bool keep_alive = headers.count("Connection") && 
+                     (headers["Connection"] == "keep-alive" || 
+                      headers["Connection"] == "Keep-Alive");
+    client.set_keep_alive(keep_alive);
+
+    processRequest(&client);
+
+    // Prepare for next request if keep-alive
+    if (client.should_keep_alive()) {
+        client.request_data.clear();
+        client.request = Request(); // Reset request object
+    } else {
+        removeClient(client_fd);
+    }
 }
+
+
+void Server::sendFileResponse(Client* client, const std::string& path) {
+    std::string content = FileHandler::readFile(path);
+    std::string mimeType = MimeTypes::getType(path);
+    
+    std::string response = "HTTP/1.1 200 OK\r\n";
+    response += "Content-Type: " + mimeType + "\r\n";
+    response += "Content-Length: " + toString(content.size()) + "\r\n";
+    response += "\r\n" + content;
+    
+    send(client->fd, response.c_str(), response.size(), 0);
+}
+
+void Server::handleDirectoryListing(Client* client, const std::string& path) {
+    // Simple directory listing implementation
+    std::vector<std::string> files = FileHandler::listDirectory(path);
+    std::string content = "<html><body><h1>Directory Listing</h1><ul>";
+    
+    for (size_t i = 0; i < files.size(); ++i) {
+        content += "<li>" + files[i] + "</li>";
+    }
+    
+    content += "</ul></body></html>";
+    sendResponse(client, 200, content);
+}
+
+void Server::handleGetRequest(Client* client) {
+    // Basic GET handling example
+    std::string path = config.getRoot() + client->request.getPath();
+    
+    if (FileHandler::isDirectory(path)) {
+        handleDirectoryListing(client, path);
+    } else if (FileHandler::fileExists(path)) {
+        sendFileResponse(client, path);
+    } else {
+        sendErrorResponse(client, 404);
+    }
+}
+
+void Server::handlePostRequest(Client* client) {
+    std::string uploadPath = config.getUploadDir() + client->request.getPath();
+    
+    // Create directory structure if needed
+    std::size_t last_slash = uploadPath.find_last_of('/');
+    if (last_slash != std::string::npos) {
+        FileHandler::createDirectory(uploadPath.substr(0, last_slash));
+    }
+
+    if (FileHandler::writeFile(uploadPath, client->request.getBody())) {
+        sendResponse(client, 201, "Resource created");
+    } else {
+        sendErrorResponse(client, 500);
+    }
+}
+
+void Server::processRequest(Client* client) {
+    // Normalize HTTP method to uppercase
+    std::string method = client->request.getMethod();
+    for (size_t i = 0; i < method.length(); ++i) {
+        method[i] = toupper(method[i]);
+    }
+
+    try {
+        std::cout << "Processing " << method << " request for: " 
+                  << client->request.getPath() << std::endl;
+
+        if (method == "GET") {
+            handleGetRequest(client);
+        } else if (method == "POST") {
+            handlePostRequest(client);
+        } else {
+            std::cerr << "Unsupported method: " << method << std::endl;
+            sendErrorResponse(client, 501);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Request processing error: " << e.what() << std::endl;
+        sendErrorResponse(client, 500);
+    }
+}
+
 
 void Server::run() {
     std::cout << "Server entering main loop..." << std::endl;
@@ -236,4 +313,47 @@ void Server::setPollEvents(size_t index, short events) {
 
 int Server::getServerFd() const {
     return server_fd;
+}
+
+void Server::sendResponse(Client* client, int status, const std::string& content) {
+    std::string response = "HTTP/1.1 " + toString(status) + " OK\r\n";
+    response += "Content-Length: " + toString(content.size()) + "\r\n";
+    
+    if (client->should_keep_alive()) {
+        response += "Connection: keep-alive\r\n";
+        response += "Keep-Alive: timeout=5, max=100\r\n";
+    } else {
+        response += "Connection: close\r\n";
+    }
+    
+    response += "\r\n" + content;
+    send(client->fd, response.c_str(), response.size(), 0);
+}
+
+void Server::sendErrorResponse(Client* client, int errorCode) {
+    const std::map<int, std::string>& errorPages = config.getErrorPages();
+    std::string content;
+    
+    try {
+        if (errorPages.count(errorCode)) {
+            content = FileHandler::readFile(config.getRoot() + errorPages.at(errorCode));
+        } else {
+            content = "<html><body><h1>" + toString(errorCode) + " Error</h1></body></html>";
+        }
+    } catch (const std::exception& e) {
+        content = "<html><body><h1>Error Generating Error Page</h1></body></html>";
+    }
+
+    std::string response = "HTTP/1.1 " + toString(errorCode) + " Error\r\n";
+    response += "Content-Type: text/html\r\n";
+    response += "Content-Length: " + toString(content.size()) + "\r\n";
+    
+    if (client->should_keep_alive()) {
+        response += "Connection: keep-alive\r\n";
+    } else {
+        response += "Connection: close\r\n";
+    }
+    
+    response += "\r\n" + content;
+    send(client->fd, response.c_str(), response.size(), 0);
 }

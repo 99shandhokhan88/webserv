@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/12 17:40:03 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/19 23:48:22 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/03/09 00:33:18 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,9 +25,12 @@ private:
     std::string server_name;
     size_t client_max_body_size;
     std::map<int, std::string> error_pages;
-    std::vector<LocationConfig> locations;
     std::string root;
     std::string index;
+
+    std::vector<LocationConfig> locations;
+
+    std::string upload_dir;  // Add this member
 
 public:
     ServerConfig();
@@ -44,6 +47,10 @@ public:
     void setIndex(const std::string& index);
 
     // Getters
+    const std::string& getUploadDir() const;
+    void setUploadDir(const std::string& dir);
+
+    
     int getPort() const;
     const std::string& getServerName() const;
     size_t getClientMaxBodySize() const;
@@ -52,7 +59,20 @@ public:
     const std::string& getRoot() const;
     const std::string& getIndex() const;
 
+
     void parseLocationBlock(std::ifstream& configFile, const std::string& path);
+
+
+    const LocationConfig* matchLocation(const std::string& path) const {
+        for (std::vector<LocationConfig>::const_iterator it = locations.begin(); 
+             it != locations.end(); ++it) {
+            if (path.find(it->getPath()) == 0) {
+                return &(*it);
+            }
+        }
+        return NULL;
+    }
+
 };
 
 #endif
