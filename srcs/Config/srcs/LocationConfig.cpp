@@ -6,11 +6,20 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 12:46:31 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/27 17:56:01 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 23:29:36 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "LocationConfig.hpp"
+
+
+void LocationConfig::addCgiExtension(const std::string& ext) {
+    _cgi_extensions.insert(ext);
+}
+
+const std::set<std::string>& LocationConfig::getCgiExtensions() const {
+    return _cgi_extensions;
+}
 
 // Constructors and Destructor
 LocationConfig::~LocationConfig() { }
@@ -18,6 +27,24 @@ LocationConfig::~LocationConfig() { }
 // Setters
 void LocationConfig::setPath(const std::string& p) { 
     path = p; 
+}
+
+
+bool LocationConfig::getAutoIndex() const {
+    return _auto_index;
+}
+
+bool LocationConfig::isMimeTypeAllowed(const std::string& mime_type) const {
+    return _allowed_mime_types.empty() ||  // Allow all if none specified
+           _allowed_mime_types.count(mime_type) > 0;
+}
+
+void LocationConfig::setAutoIndex(bool value) {
+    _auto_index = value;
+}
+
+void LocationConfig::addAllowedMimeType(const std::string& mime_type) {
+    _allowed_mime_types.insert(mime_type);
 }
 
 void LocationConfig::setRoot(const std::string& r) { 

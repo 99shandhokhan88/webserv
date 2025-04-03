@@ -4,40 +4,50 @@
 #include "../../HTTP/incs/Request.hpp"
 #include <string>
 #include <poll.h>
-#include <sys/types.h>
-#include <cstdio>
-#include <sstream>
 
 class Server;  // Forward declaration
 
 class Client {
-private:  // Private members first to ensure visibility in initializer list
+private:
     std::string pending_data;
-    bool        keep_alive;
-    
+    bool keep_alive;
 
 public:
-    int         fd;
-    Request     request;
+    int fd;
+    Request request;
     std::string request_data;
+    void parseRequest();
 
-     void set_keep_alive(bool value) { keep_alive = value; }
 
-    explicit Client(int client_fd = -1) : 
-        keep_alive(false),
-        fd(client_fd),
-        request()  // Explicitly initialize Request
-    {}
-    
-    ~Client() {}
 
+    void reset() {
+        request_data.clear();
+        // Reset other request-related state
+    }
+
+
+    bool isRequestComplete() const {
+        // Check for both headers and content-length if present
+        size_t header_end = request_data.find("\r\n\r\n");
+        if (header_end == std::string::npos) return false;
+        
+        // Check for body completeness if needed
+        return true;
+    }
+
+    explicit Client(int client_fd = -1);
+    ~Client() {};
+
+    // Request handling
     void handleRequest(Server& server);
-    bool send_pending_data();
-    bool should_keep_alive() const { return keep_alive; }
-    
     std::string readData();
-    void sendData(const std::string& data);
     void prepare_response(const std::string& content);
+    bool send_pending_data();
+
+    // Data management
+    void appendRequestData(const char* data, size_t length);
+    bool shouldKeepAlive() const;
+    void setKeepAlive(bool value);
 };
 
 #endif

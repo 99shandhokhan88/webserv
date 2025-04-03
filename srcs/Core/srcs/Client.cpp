@@ -18,6 +18,34 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+
+void Client::parseRequest() {
+    request.parse(request_data.c_str(), request_data.size());
+}
+
+// Fix initialization order to match declaration
+Client::Client(int client_fd) : 
+    pending_data(),
+    keep_alive(false),
+    fd(client_fd),
+    request(),
+    request_data() {}
+
+
+
+    void Client::appendRequestData(const char* data, size_t length) {
+        request_data.append(data, length);
+    }
+
+    
+    bool Client::shouldKeepAlive() const {
+        return keep_alive;
+    }
+    
+    void Client::setKeepAlive(bool value) {
+        keep_alive = value;
+    }
+
 void Client::handleRequest(Server& server) {
     std::string request = readData();
     
@@ -29,29 +57,38 @@ void Client::handleRequest(Server& server) {
     // Simple response for now
     prepare_response("Hello world!");
 
+
+        // Get pollfd vector reference once
+        const std::vector<struct pollfd>& pollfds = server.getPollFds();
+
     // Set the socket for writing
-    for (size_t i = 0; i < server.getPollFds().size(); ++i) {
-        if (server.getPollFds()[i].fd == fd) {
+    for (size_t i = 0; i < pollfds.size(); ++i) {
+        if (pollfds[i].fd == fd) {
             server.setPollEvents(i, POLLIN | POLLOUT);
             break;
         }
     }
 }
 
+// Modify readData() to ensure complete requests
 std::string Client::readData() {
     char buffer[1024];
-    std::string request;
     ssize_t bytes_read;
 
-    while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
-        request.append(buffer, bytes_read);
+    while ((bytes_read = recv(fd, buffer, sizeof(buffer), 0)) > 0) {
+        request_data.append(buffer, bytes_read);
+        
+        // Check for complete headers
+        if (request_data.find("\r\n\r\n") != std::string::npos) {
+            break;
+        }
     }
-
-    if (bytes_read == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    
+    if (bytes_read == -1 && errno != EAGAIN) {
         throw std::runtime_error("Read error");
     }
-
-    return request;
+    
+    return request_data;
 }
 
 bool Client::send_pending_data() {

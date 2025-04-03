@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:18:13 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/27 19:41:49 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 19:47:43 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ class Response
                     int status;
 
                     //  Response headers
-                    std::map<std::string, std::string> headers;
+                    std::map<std::string, std::string> _headers;
 
                     //  Response body
                     std::string _body;

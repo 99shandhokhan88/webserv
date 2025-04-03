@@ -6,13 +6,20 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/09 15:43:39 by vzashev           #+#    #+#             */
-/*   Updated: 2025/03/09 00:22:03 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 19:49:43 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
+
+
+
+
 
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "Client.hpp"
+#include "../../Config/incs/ServerConfig.hpp"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -25,56 +32,71 @@
 #include <fcntl.h>
 #include <stdexcept>
 #include <cstring>
+#include <unistd.h>
+#include <errno.h>
+#include <sstream>
+#include <algorithm>
+#include <stdlib.h>
+#include <stdio.h>
 
-#include "Client.hpp"
-#include "../../Config/incs/ServerConfig.hpp"
 
 class Server {
 private:
     ServerConfig config;
     int server_fd;
-    int port;
-    void handleStaticRequest(Client* client);
-    std::vector<pollfd> poll_fds;
-    std::map<int, Client> clients;
+    std::string getErrorPage(int errorCode) const;
+    struct sockaddr_in address;
+    static std::vector<Server*> servers;
+    static std::vector<struct pollfd> poll_fds;
+    static std::map<int, Client> clients;
+
+    // Helper methods
+   // void addPollFD(int fd, short events);
+   // bool isServerFD(int fd) const;
 
 
-
-
+    // Private methods
     void handleGetRequest(Client* client);
     void handlePostRequest(Client* client);
     void handleDirectoryListing(Client* client, const std::string& path);
     void sendFileResponse(Client* client, const std::string& path);
+    void addPollFD(int fd, short events);
+    bool isServerFD(int fd) const;
 
 public:
     Server(const ServerConfig& config);
-    Server(int port_number) : port(port_number) {} // Fixed: added curly braces instead of semicolon
     ~Server();
 
+    // Core functionality
 
+
+    bool isCgiRequest(const LocationConfig& location, const std::string& path) const;
+    
+    void setupSocket();
+    void run();
+    void acceptNewConnection();
+    void handleClient(int client_fd);
+    void removeClient(int client_fd);
+
+
+    bool isCgiRequest(const std::string& path) const;
+
+    //void handleStaticRequest(Client* client);
+    
+    // HTTP handling
+    void processRequest(Client* client);
     void sendResponse(Client* client, int status, const std::string& content);
     void sendErrorResponse(Client* client, int errorCode);
 
+    // Static cleanup
+    static void cleanup();
 
-    bool init();  // Move the implementation to the .cpp file
-
-
-
-    void processRequest(Client* client);  // Add this line
-    void start();
-    void removeClient(int client_fd);
-    void acceptNewConnection();
-    void handleClient(int client_fd);
-    void setupSocket();
-    void run();
-     const std::string& getRoot() const;
-     const std::string& getIndex() const;
-     const std::string& getErrorPage(int code) const;
-
+    // Getters
     int getServerFd() const;
     const ServerConfig& getConfig() const;
 
-    std::vector<pollfd>& getPollFds();
+
+    const std::vector<struct pollfd>& getPollFds() const;
     void setPollEvents(size_t index, short events);
 };
 

@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/12 17:40:03 by vzashev           #+#    #+#             */
-/*   Updated: 2025/03/09 00:33:18 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/03 19:33:19 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set> // Add this line
 
 class ServerConfig {
 private:
@@ -27,8 +28,9 @@ private:
     std::map<int, std::string> error_pages;
     std::string root;
     std::string index;
+    std::set<std::string> _cgi_extensions;
+    std::vector<LocationConfig> _locations;
 
-    std::vector<LocationConfig> locations;
 
     std::string upload_dir;  // Add this member
 
@@ -36,6 +38,7 @@ public:
     ServerConfig();
     ServerConfig(const std::string& configFilePath); // ADD THIS
     void loadConfig(const std::string& configFilePath);
+  const std::string getFullPath(const std::string& uri) const;
 
     // Setters
     void setPort(int port);
@@ -49,6 +52,10 @@ public:
     // Getters
     const std::string& getUploadDir() const;
     void setUploadDir(const std::string& dir);
+
+    const std::set<std::string>& getCgiExtensions() const;
+    const LocationConfig& getLocationForPath(const std::string& path) const;
+    
 
     
     int getPort() const;
@@ -64,8 +71,8 @@ public:
 
 
     const LocationConfig* matchLocation(const std::string& path) const {
-        for (std::vector<LocationConfig>::const_iterator it = locations.begin(); 
-             it != locations.end(); ++it) {
+        for (std::vector<LocationConfig>::const_iterator it = _locations.begin(); 
+             it != _locations.end(); ++it) {
             if (path.find(it->getPath()) == 0) {
                 return &(*it);
             }

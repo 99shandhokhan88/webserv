@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:34:31 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/27 19:47:05 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 19:47:59 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ void Response::setStatus(int status)
 void Response::setHeader(const std::string& key, const std::string& value)
 {
     
-    headers[key] = value;   // Set the header
+    _headers[key] = value;   // Set the header
     
 }
 
@@ -74,7 +74,7 @@ std::string Response::generate() const
     << " OK\r\n";   // Status code and reason phrase
 
     // Headers, including Content-Length and Connection headers
-    for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it)
+    for (std::map<std::string, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it)
     {
         oss
         << it->first

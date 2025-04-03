@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 13:27:17 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/19 23:00:55 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 18:07:31 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ void EventLoop::run() {
             if (poll_fds[i].revents & POLLIN) {
                 for (size_t j = 0; j < servers.size(); ++j) {
                     if (poll_fds[i].fd == servers[j].getServerFd()) {
-                        servers[j].acceptNewConnection();
+                        servers[j].acceptNewConnection();  // Now matches Server class
                     }
                 }
             }

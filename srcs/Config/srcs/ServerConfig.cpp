@@ -6,15 +6,95 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/03/09 00:33:47 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/03 20:04:23 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerConfig.hpp"
+#include "../../Utils/incs/FileHandler.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <cstring>
+
+const std::set<std::string>& ServerConfig::getCgiExtensions() const {
+    return _cgi_extensions;
+}
+
+// Replace range-based for loops with iterator-based loops
+const LocationConfig& ServerConfig::getLocationForPath(const std::string& path) const {
+    
+    
+    
+    
+    
+    
+    std::string clean_path = path;
+    
+    // Normalize path
+    if (clean_path.empty()) clean_path = "/";
+    if (clean_path[0] != '/') clean_path = "/" + clean_path;
+
+    const LocationConfig* best_match = NULL;
+    size_t best_length = 0;
+
+    // First pass: exact matches
+    for (std::vector<LocationConfig>::const_iterator it = _locations.begin(); 
+         it != _locations.end(); ++it) {
+        if (it->getPath() == clean_path) {
+            return *it;
+        }
+    }
+
+    // Second pass: prefix matches
+    for (std::vector<LocationConfig>::const_iterator it = _locations.begin();
+         it != _locations.end(); ++it) {
+        const std::string& loc_path = it->getPath();
+        if (clean_path.find(loc_path) == 0 && loc_path.length() > best_length) {
+            best_length = loc_path.length();
+            best_match = &(*it);
+        }
+    }
+
+    // Fallback to default location
+    if (!best_match) {
+        for (std::vector<LocationConfig>::const_iterator it = _locations.begin();
+             it != _locations.end(); ++it) {
+            if (it->getPath() == "/") {
+                return *it;
+            }
+        }
+        throw std::runtime_error("No matching location found for path: " + clean_path);
+    }
+
+    return *best_match;
+}
+
+// Modify string back() check for C++98 compatibility
+const std::string ServerConfig::getFullPath(const std::string& uri) const {
+    std::string full_path = root;
+    
+    // Ensure root ends with a slash
+    if (!full_path.empty() && full_path[full_path.size()-1] != '/') {
+        full_path += '/';
+    }
+    
+    // Handle URI starting with slash
+    if (!uri.empty() && uri[0] == '/') {
+        full_path += uri.substr(1);
+    } else {
+        full_path += uri;
+    }
+    
+    // Remove trailing slash for files using C++98 methods
+    if (!full_path.empty() && full_path[full_path.size()-1] == '/' && 
+        !FileHandler::isDirectory(full_path)) {
+        full_path = full_path.substr(0, full_path.size()-1);
+    }
+    
+    return full_path;
+}
+
 
 ServerConfig::ServerConfig() :
     port(8080),
@@ -104,7 +184,7 @@ void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::stri
         }
     }
 
-    locations.push_back(location);
+    _locations.push_back(location);
 }
 
 
@@ -132,12 +212,18 @@ void ServerConfig::addErrorPage(int code, const std::string& path) {
 }
 
 void ServerConfig::addLocation(const LocationConfig& location) {
-    locations.push_back(location);
+    _locations.push_back(location);
 }
 
 void ServerConfig::setRoot(const std::string& root) {
-    this->root = root;
+    if (!root.empty() && root[root.size()-1] != '/') {
+        this->root = root + "/";
+    } else {
+        this->root = root;
+    }
 }
+
+
 
 void ServerConfig::setIndex(const std::string& index) {
     this->index = index;

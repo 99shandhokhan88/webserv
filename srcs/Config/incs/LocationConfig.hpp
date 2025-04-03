@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 11:35:01 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/27 17:54:50 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 23:29:22 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 
 class LocationConfig {
 private:
@@ -23,9 +24,13 @@ private:
     std::string cgi_extension;
     std::vector<std::string> allowed_methods;
     std::string index;
-    
+    std::set<std::string> _cgi_extensions;
     std::string _cgiPath;
     bool _cgiEnabled;
+
+
+    bool _auto_index;
+    std::set<std::string> _allowed_mime_types;
 
 public:
     // Constructors and Destructor declarations
@@ -39,7 +44,8 @@ public:
     void addAllowedMethod(const std::string& method);
     void setIndex(const std::string& idx);
 
-
+    void addCgiExtension(const std::string& ext);
+    const std::set<std::string>& getCgiExtensions() const;
     void setCgiEnabled(bool enabled) { _cgiEnabled = enabled; }
     void setCgiPath(const std::string& path) { _cgiPath = path; }
 
@@ -51,8 +57,10 @@ public:
     const std::string& getIndex() const;
     bool isCgiEnabled() const { return _cgiEnabled; }
     const std::string& getCgiPath() const { return _cgiPath; }
-
-    
+    bool getAutoIndex() const;
+    bool isMimeTypeAllowed(const std::string& mime_type) const;
+    void setAutoIndex(bool value);
+    void addAllowedMimeType(const std::string& mime_type);
 };
 
 #endif

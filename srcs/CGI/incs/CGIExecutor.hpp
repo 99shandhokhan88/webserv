@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 11:38:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/27 17:52:40 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 19:42:47 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,16 +37,22 @@ public:
     virtual const char* what() const throw() { return _msg.c_str(); }
 };
 
-class CGIExecutor {
-    const Request& _request;
-    const LocationConfig& _location;
+class CGIExecutor
+{
+    private:
+     const Request& _request;
+     const LocationConfig& _location;
+     LocationConfig _config;
+     char** _env;
     std::string _output;
+    void setupEnvironment();
+    char** createExecArgs() const;
 
 public:
-    CGIExecutor(const Request& req, const LocationConfig& loc);
-    ~CGIExecutor();
+CGIExecutor(const Request& request, const LocationConfig& config);
+~CGIExecutor();
+std::string execute();
     
-    std::string execute();
 };
 
 #endif

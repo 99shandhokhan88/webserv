@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:58:41 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/20 18:18:16 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 17:21:42 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,8 +29,7 @@ int main(int argc, char **argv) {
 
         // Initialize and start the server
         Server server(config);
-        server.start(); // Start the server
-        server.run();   // Enter the event loop
+        server.run();   // Start & Enter the event loop
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
         return 1;

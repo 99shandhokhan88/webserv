@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 23:50:10 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 23:24:16 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/03 19:20:18 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,9 @@ void ConfigParser::parseServerBlock(std::ifstream& file)
 {
     
     ServerConfig server; // Create a new server configuration object
-
+ LocationConfig default_location;
+    default_location.setPath("/");
+    server.addLocation(default_location);
     std::string line; // Variable to store each line of the file
 
 
@@ -208,6 +210,12 @@ void ConfigParser::parseDirective(const std::string& line, ServerConfig& server)
         server.addErrorPage(code, path);    // Add the error page to the server configuration
 
     }
+    else if (key == "cgi_extension") {
+        std::string ext;
+        while (iss >> ext) {
+            //location.addCgiExtension(ext); // Add to LocationConfig
+        }
+    }
     
 }
 
@@ -224,7 +232,17 @@ void ConfigParser::parseDirective(const std::string& line, LocationConfig& locat
 
     // Read the key from the line
     iss >> key;
-
+    if (key == "autoindex") {
+        std::string value;
+        iss >> value;
+        location.setAutoIndex(value == "on");
+    }
+    else if (key == "allow_types") {
+        std::string mime_type;
+        while (iss >> mime_type) {
+            location.addAllowedMimeType(mime_type);
+        }
+    }
 
     // Check the key and parse the value
     if (key == "root")  // If the key is "root"

@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 18:50:57 by vzashev           #+#    #+#             */
-/*   Updated: 2025/03/09 00:45:47 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/04/02 19:47:49 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,49 +27,44 @@ Request::~Request()
 {
     // No print in destructor
 }
-
-
 void Request::parse(const char* data, size_t length) {
-    raw_data.assign(data, length);
-    std::istringstream iss(raw_data);
-    std::string request_line;
+    raw_data.append(data, length);
 
-    // Extract request line
-    std::getline(iss, request_line);
-    size_t method_end = request_line.find(' ');
-    size_t path_end = request_line.find(' ', method_end + 1);
+    // Only parse headers if not already parsed
+    if (_method.empty()) {
+        size_t header_end = raw_data.find("\r\n\r\n");
+        if (header_end == std::string::npos) return;
 
-    if (method_end != std::string::npos && path_end != std::string::npos) {
-        // CORRECTED: Use _method and _path instead of method/path
+        // Parse request line
+        size_t line_end = raw_data.find("\r\n");
+        if (line_end == std::string::npos) {
+            throw std::runtime_error("Invalid request format");
+        }
+
+        std::string request_line = raw_data.substr(0, line_end);
+        size_t method_end = request_line.find(' ');
+        size_t path_end = request_line.find(' ', method_end + 1);
+
+        if (method_end == std::string::npos || path_end == std::string::npos) {
+            throw std::runtime_error("Invalid request line format");
+        }
+
         _method = request_line.substr(0, method_end);
         _path = request_line.substr(method_end + 1, path_end - method_end - 1);
-        
+        _version = request_line.substr(path_end + 1);
+
         // Convert method to uppercase
         for (size_t i = 0; i < _method.length(); ++i) {
             _method[i] = toupper(_method[i]);
         }
-    } else {
-        throw std::runtime_error("Invalid request line");
     }
 
-    // Parse headers
-    std::string header;
-    while (std::getline(iss, header) && header != "\r") {
-        size_t colon = header.find(':');
-        if (colon != std::string::npos) {
-            std::string key = header.substr(0, colon);
-            std::string value = header.substr(colon + 2, header.length() - colon - 3);
-            headers[key] = value;
-        }
-    }
-
-    // CORRECTED: Use _body instead of body
-    size_t header_end = raw_data.find("\r\n\r\n");
-    if (header_end != std::string::npos) {
-        _body = raw_data.substr(header_end + 4);
+    // Parse body if present
+    size_t body_start = raw_data.find("\r\n\r\n");
+    if (body_start != std::string::npos) {
+        _body = raw_data.substr(body_start + 4);
     }
 }
-
 
 
 
@@ -98,7 +93,7 @@ void Request::parseHeaderLine(const std::string& line)
         value.erase(value.find_last_not_of(" \t\r\n") + 1); // Erase trailing whitespace
         
         // Add the header to the map
-        headers[key] = value;
+        _headers[key] = value;
         
     }
 }
@@ -120,7 +115,7 @@ void Request::setVersion(const std::string& _version) {
 }
 
 void Request::setHeader(const std::string& key, const std::string& value) {
-    headers[key] = value;
+    _headers[key] = value;
 }
 
 void Request::setBody(const std::string& _body) {

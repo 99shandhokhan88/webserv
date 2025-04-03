@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <unistd.h>
 #include <fstream>
 #include <sys/stat.h>
 #include <dirent.h>  // Add this for directory operations
@@ -20,6 +21,9 @@ public:
     static bool writeFile(const std::string& path, const std::string& content);
     static bool fileExists(const std::string& path);
     static bool isDirectory(const std::string& path);
+    static bool isExecutable(const std::string& path) {
+        return access(path.c_str(), X_OK) == 0;
+    }
 };
 
 #endif
