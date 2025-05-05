@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 18:50:57 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/02 19:47:49 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 18:37:47 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,43 +27,70 @@ Request::~Request()
 {
     // No print in destructor
 }
+
+
+
+
+std::string Request::dechunk(const std::string& body) {
+    std::string result;
+    size_t pos = 0;
+
+    while (pos < body.size()) {
+        size_t chunk_size_end = body.find("\r\n", pos);
+        if (chunk_size_end == std::string::npos) break;
+
+        // Estrai dimensione chunk
+        std::string chunk_size_str = body.substr(pos, chunk_size_end - pos);
+        unsigned int chunk_size;
+        std::istringstream iss(chunk_size_str);
+        iss >> std::hex >> chunk_size;
+
+        if (chunk_size == 0) break; // Chunk finale
+        
+        // Salta "\r\n" e leggi i dati
+        pos = chunk_size_end + 2;
+        result += body.substr(pos, chunk_size);
+        pos += chunk_size + 2; // Salta "\r\n" dopo i dati
+    }
+
+    return result;
+}
+
+
+
+
+
+
+
+
+
+
+
 void Request::parse(const char* data, size_t length) {
     raw_data.append(data, length);
 
-    // Only parse headers if not already parsed
-    if (_method.empty()) {
-        size_t header_end = raw_data.find("\r\n\r\n");
-        if (header_end == std::string::npos) return;
+    // Separazione header/body
+    size_t header_end = raw_data.find("\r\n\r\n");
+    if (header_end == std::string::npos) return;
 
-        // Parse request line
-        size_t line_end = raw_data.find("\r\n");
-        if (line_end == std::string::npos) {
-            throw std::runtime_error("Invalid request format");
-        }
-
-        std::string request_line = raw_data.substr(0, line_end);
-        size_t method_end = request_line.find(' ');
-        size_t path_end = request_line.find(' ', method_end + 1);
-
-        if (method_end == std::string::npos || path_end == std::string::npos) {
-            throw std::runtime_error("Invalid request line format");
-        }
-
-        _method = request_line.substr(0, method_end);
-        _path = request_line.substr(method_end + 1, path_end - method_end - 1);
-        _version = request_line.substr(path_end + 1);
-
-        // Convert method to uppercase
-        for (size_t i = 0; i < _method.length(); ++i) {
-            _method[i] = toupper(_method[i]);
-        }
+    // Parsing headers
+    std::istringstream headers_stream(raw_data.substr(0, header_end));
+    std::string header_line;
+    while (std::getline(headers_stream, header_line)) {
+        parseHeaderLine(header_line);
     }
 
-    // Parse body if present
-    size_t body_start = raw_data.find("\r\n\r\n");
-    if (body_start != std::string::npos) {
-        _body = raw_data.substr(body_start + 4);
+    // Estrazione body
+    _body = raw_data.substr(header_end + 4);
+
+    // Gestione chunked encoding
+    if (getHeader("Transfer-Encoding") == "chunked") {
+        _body = dechunk(_body);
     }
+
+    // Parsing request line (METODO/PATH/VERSIONE)
+    size_t first_line_end = raw_data.find("\r\n");
+    parseRequestLine(raw_data.substr(0, first_line_end));
 }
 
 
@@ -72,17 +99,13 @@ void Request::parse(const char* data, size_t length) {
 void Request::parseHeaderLine(const std::string& line)
 {
 
-    // Find the colon character
     size_t colon_pos = line.find(':');
 
-    // Check if the colon character was found
     if (colon_pos != std::string::npos)
     {
 
-        // Extract the key and value
         std::string key = line.substr(0, colon_pos);
 
-        // Extract the value
         std::string value = line.substr(colon_pos + 1);
 
         
@@ -149,32 +172,8 @@ void Request::parseRequestLine(const std::string& line) {
             _path = _uri;
         }
     }
+    _path = FileHandler::sanitizePath(_path);
+    _uri = FileHandler::sanitizePath(_uri);
 }
 
 
-
-/*
-
-Key Features of the HTTP Implementation
-Request Parsing:
-
-The Request class parses HTTP requests, including the request line, headers, and body.
-
-The RequestParser class provides helper methods for parsing.
-
-Response Generation:
-
-The Response class generates HTTP responses, including the status line, headers, and body.
-
-The ResponseGenerator class provides helper methods for generating responses.
-
-Error Handling:
-
-The ResponseGenerator class can generate error responses (e.g., 404 Not Found, 500 Internal Server Error).
-
-Modular Design:
-
-Each component is modular and can be extended or modified independently.
-
-
-*/

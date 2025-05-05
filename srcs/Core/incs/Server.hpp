@@ -6,20 +6,17 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/09 15:43:39 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/02 19:49:43 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 17:35:10 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
-
-
-
-
 
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
 #include "Client.hpp"
 #include "../../Config/incs/ServerConfig.hpp"
+#include "../../HTTP/incs/Request.hpp"
+#include "../../HTTP/incs/Response.hpp"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -50,11 +47,6 @@ private:
     static std::vector<struct pollfd> poll_fds;
     static std::map<int, Client> clients;
 
-    // Helper methods
-   // void addPollFD(int fd, short events);
-   // bool isServerFD(int fd) const;
-
-
     // Private methods
     void handleGetRequest(Client* client);
     void handlePostRequest(Client* client);
@@ -68,8 +60,6 @@ public:
     ~Server();
 
     // Core functionality
-
-
     bool isCgiRequest(const LocationConfig& location, const std::string& path) const;
     
     void setupSocket();
@@ -77,12 +67,8 @@ public:
     void acceptNewConnection();
     void handleClient(int client_fd);
     void removeClient(int client_fd);
+    void handleDeleteRequest(Client* client);
 
-
-    bool isCgiRequest(const std::string& path) const;
-
-    //void handleStaticRequest(Client* client);
-    
     // HTTP handling
     void processRequest(Client* client);
     void sendResponse(Client* client, int status, const std::string& content);
@@ -93,8 +79,7 @@ public:
 
     // Getters
     int getServerFd() const;
-    const ServerConfig& getConfig() const;
-
+    const ServerConfig& getConfig() const { return config; }
 
     const std::vector<struct pollfd>& getPollFds() const;
     void setPollEvents(size_t index, short events);

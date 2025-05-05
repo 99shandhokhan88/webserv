@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 22:33:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/03 19:25:04 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 18:29:51 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,7 @@ class ConfigParser
                             
                             // Parse the configuration file
                             void parse(const std::string& filename);
-
+void parseRootDirective(std::string value);
                             // Get the list of server configurations
                             const std::vector<ServerConfig>& getServers() const;
                     private:

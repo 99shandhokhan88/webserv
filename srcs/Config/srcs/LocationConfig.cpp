@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 12:46:31 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/02 23:29:36 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 17:39:07 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,23 @@ void LocationConfig::setPath(const std::string& p) {
     path = p; 
 }
 
+
+
+bool LocationConfig::getAllowUpload() const {
+    return _allow_upload;
+}
+
+bool LocationConfig::getAllowDelete() const {
+    return _allow_delete;
+}
+
+void LocationConfig::setAllowUpload(bool value) {
+    _allow_upload = value;
+}
+
+void LocationConfig::setAllowDelete(bool value) {
+    _allow_delete = value;
+}
 
 bool LocationConfig::getAutoIndex() const {
     return _auto_index;

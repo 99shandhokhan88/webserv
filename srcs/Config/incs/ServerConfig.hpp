@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/12 17:40:03 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/03 19:33:19 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 18:54:48 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ public:
     ServerConfig();
     ServerConfig(const std::string& configFilePath); // ADD THIS
     void loadConfig(const std::string& configFilePath);
-  const std::string getFullPath(const std::string& uri) const;
+    std::string getFullPath(const std::string& uri) const;  // Add this line
 
     // Setters
     void setPort(int port);

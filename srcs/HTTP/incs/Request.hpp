@@ -6,6 +6,7 @@
 #include <map>
 #include <sstream>
 #include <algorithm>
+#include "../../Utils/incs/FileHandler.hpp"
 
 class Request {
 public:
@@ -17,6 +18,7 @@ public:
     }
 
     void parse(const char* data, size_t length);
+    std::string dechunk(const std::string& body);
 
     // Setters
     void setMethod(const std::string& method);

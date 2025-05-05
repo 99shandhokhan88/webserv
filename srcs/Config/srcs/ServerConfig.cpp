@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/03 20:04:23 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 19:04:19 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,19 +21,13 @@ const std::set<std::string>& ServerConfig::getCgiExtensions() const {
     return _cgi_extensions;
 }
 
-// Replace range-based for loops with iterator-based loops
 const LocationConfig& ServerConfig::getLocationForPath(const std::string& path) const {
-    
-    
-    
-    
-    
-    
     std::string clean_path = path;
     
     // Normalize path
-    if (clean_path.empty()) clean_path = "/";
-    if (clean_path[0] != '/') clean_path = "/" + clean_path;
+    if (clean_path.empty() || clean_path[0] != '/') {
+        clean_path = "/" + clean_path;
+    }
 
     const LocationConfig* best_match = NULL;
     size_t best_length = 0;
@@ -46,53 +40,49 @@ const LocationConfig& ServerConfig::getLocationForPath(const std::string& path) 
         }
     }
 
-    // Second pass: prefix matches
+    // Second pass: longest prefix match
     for (std::vector<LocationConfig>::const_iterator it = _locations.begin();
          it != _locations.end(); ++it) {
         const std::string& loc_path = it->getPath();
-        if (clean_path.find(loc_path) == 0 && loc_path.length() > best_length) {
-            best_length = loc_path.length();
-            best_match = &(*it);
-        }
-    }
-
-    // Fallback to default location
-    if (!best_match) {
-        for (std::vector<LocationConfig>::const_iterator it = _locations.begin();
-             it != _locations.end(); ++it) {
-            if (it->getPath() == "/") {
-                return *it;
+        if (clean_path.compare(0, loc_path.length(), loc_path) == 0) {
+            if (loc_path.length() > best_length) {
+                best_length = loc_path.length();
+                best_match = &(*it);
             }
         }
-        throw std::runtime_error("No matching location found for path: " + clean_path);
     }
 
-    return *best_match;
+    // Return best match if found
+    if (best_match) {
+        return *best_match;
+    }
+
+    // Explicit fallback to root location
+    for (std::vector<LocationConfig>::const_iterator it = _locations.begin();
+         it != _locations.end(); ++it) {
+        if (it->getPath() == "/") {
+            return *it;
+        }
+    }
+
+    throw std::runtime_error("No matching location found for path: " + clean_path);
 }
 
-// Modify string back() check for C++98 compatibility
-const std::string ServerConfig::getFullPath(const std::string& uri) const {
-    std::string full_path = root;
+std::string ServerConfig::getFullPath(const std::string& uri) const {
+    std::string path = this->root;  // Access class member
     
-    // Ensure root ends with a slash
-    if (!full_path.empty() && full_path[full_path.size()-1] != '/') {
-        full_path += '/';
+    // Remove trailing slash from root
+    if (!path.empty() && path[path.length()-1] == '/') {
+        path.erase(path.length()-1);
     }
     
-    // Handle URI starting with slash
-    if (!uri.empty() && uri[0] == '/') {
-        full_path += uri.substr(1);
-    } else {
-        full_path += uri;
+    // Add sanitized URI path
+    std::string uri_path = uri;
+    if (!uri_path.empty() && uri_path[0] == '/') {
+        uri_path.erase(0, 1);
     }
     
-    // Remove trailing slash for files using C++98 methods
-    if (!full_path.empty() && full_path[full_path.size()-1] == '/' && 
-        !FileHandler::isDirectory(full_path)) {
-        full_path = full_path.substr(0, full_path.size()-1);
-    }
-    
-    return full_path;
+    return FileHandler::sanitizePath(path + "/" + uri_path);
 }
 
 
@@ -170,9 +160,11 @@ void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::stri
             std::string cgi_ext;
             iss >> cgi_ext;
             location.setCgiExtension(cgi_ext);
+            
         } else if (key == "cgi_path") {
             std::string cgi_p;
             iss >> cgi_p;
+
             location.setCgiPath(cgi_p);
         } else if (key == "allow_methods") {
             std::string method;

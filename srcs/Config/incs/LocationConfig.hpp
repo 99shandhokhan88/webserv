@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   LocationConfig.hpp                                 :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/01/13 11:35:01 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/02 23:29:22 by vzashev          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef LOCATIONCONFIG_HPP
 #define LOCATIONCONFIG_HPP
 
@@ -27,17 +15,37 @@ private:
     std::set<std::string> _cgi_extensions;
     std::string _cgiPath;
     bool _cgiEnabled;
-
-
     bool _auto_index;
+    bool _allow_upload;
+    bool _allow_delete;
     std::set<std::string> _allowed_mime_types;
 
 public:
-    // Constructors and Destructor declarations
-    LocationConfig() : _cgiEnabled(false) {}
+    // Constructor with correct initialization order
+    LocationConfig() : 
+        path(""),
+        root(""),
+        cgi_extension(""),
+        allowed_methods(),
+        index("index.html"),
+        _cgi_extensions(),
+        _cgiPath(""),
+        _cgiEnabled(false),
+        _auto_index(false),
+        _allow_upload(false),
+        _allow_delete(false),
+        _allowed_mime_types()
+    {}
+    
     ~LocationConfig();
+    
+    // Allow methods
+    bool getAllowUpload() const;
+    bool getAllowDelete() const;
+    void setAllowUpload(bool value);
+    void setAllowDelete(bool value);
 
-    // Setters declarations
+    // Existing methods
     void setPath(const std::string& p);
     void setRoot(const std::string& r);
     void setCgiExtension(const std::string& ext);
