@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 23:50:10 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 19:04:46 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/05 19:17:34 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,9 +141,9 @@ void ConfigParser::parseDirective(const std::string& line, ServerConfig& server)
         std::string root_value;
         iss >> root_value;
         
-        // C++98 compatible semicolon removal
-        if (!root_value.empty() && root_value[root_value.size()-1] == ';') {
-            root_value.erase(root_value.size()-1, 1);
+        size_t semicolon_pos;
+        while ((semicolon_pos = root_value.find(';')) != std::string::npos) {
+            root_value.erase(semicolon_pos, 1);
         }
         
         server.setRoot(FileHandler::sanitizePath(root_value));

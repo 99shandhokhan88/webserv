@@ -77,16 +77,20 @@ bool FileHandler::deleteDirectory(const std::string& path) {
     return rmdir(path.c_str()) == 0;
 }
 
-// In FileHandler.cpp
 std::string FileHandler::sanitizePath(const std::string& path) {
     std::string clean_path;
     
-    // Remove invalid characters and normalize slashes
+    // Remove invalid characters and normalize path
     for (size_t i = 0; i < path.size(); ++i) {
         char c = path[i];
         
-        // Skip semicolons and duplicate slashes
+        // Skip semicolons and other invalid characters
         if (c == ';') continue;
+        
+        // Handle directory separators
+        if (c == '\\') c = '/'; // Normalize Windows paths
+        
+        // Avoid duplicate slashes
         if (c == '/' && !clean_path.empty() && clean_path[clean_path.size()-1] == '/') continue;
         
         clean_path += c;
