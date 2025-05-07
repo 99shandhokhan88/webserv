@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/12 17:40:03 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 18:54:48 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/07 20:38:18 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ private:
     std::vector<LocationConfig> _locations;
 
 
-    std::string upload_dir;  // Add this member
+    std::string _upload_dir;  // Add this member
 
 public:
     ServerConfig();

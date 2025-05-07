@@ -4,6 +4,7 @@
 #include "../../HTTP/incs/Request.hpp"
 #include <string>
 #include <poll.h>
+#include "../../HTTP/incs/Response.hpp"
 
 class Server;  // Forward declaration
 
@@ -39,7 +40,8 @@ public:
     ~Client() {};
 
     // Request handling
-    void handleRequest(Server& server);
+void handleRequest(class Server& server);
+
     std::string readData();
     void prepare_response(const std::string& content);
     bool send_pending_data();

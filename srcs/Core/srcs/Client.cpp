@@ -47,21 +47,38 @@ Client::Client(int client_fd) :
     }
 
 void Client::handleRequest(Server& server) {
-    std::string request = readData();
-    
-    if (request.empty()) {
+    std::string data = readData();
+
+    if (data.empty()) {
         server.removeClient(fd);
         return;
     }
 
-    // Simple response for now
-    prepare_response("Hello world!");
+    try {
+        // Parse the request from accumulated data
+        request.parse(data.c_str(), data.size());
 
+        // Prepare response object
+        Response response;
 
-        // Get pollfd vector reference once
-        const std::vector<struct pollfd>& pollfds = server.getPollFds();
+        // Call server logic to handle the request
+        server.handleRequest(request, response);
 
-    // Set the socket for writing
+        // Convert the response to a raw HTTP string
+        pending_data = response.generate();
+
+    } catch (const std::exception& e) {
+        std::cerr << "Request handling error: " << e.what() << "\n";
+
+        // Fallback error response
+        Response response;
+        response.setStatus(500);
+        response.setBody("500 Internal Server Error");
+        pending_data = response.generate();
+    }
+
+    // Mark this FD as ready to write
+    const std::vector<struct pollfd>& pollfds = server.getPollFds();
     for (size_t i = 0; i < pollfds.size(); ++i) {
         if (pollfds[i].fd == fd) {
             server.setPollEvents(i, POLLIN | POLLOUT);
@@ -69,6 +86,7 @@ void Client::handleRequest(Server& server) {
         }
     }
 }
+
 
 // Modify readData() to ensure complete requests
 std::string Client::readData() {
@@ -79,8 +97,22 @@ std::string Client::readData() {
         request_data.append(buffer, bytes_read);
         
         // Check for complete headers
-        if (request_data.find("\r\n\r\n") != std::string::npos) {
-            break;
+        if (request_data.find("\r\n\r\n") != std::string::npos)
+        {
+                size_t headers_end = request_data.find("\r\n\r\n");
+    std::string headers_part = request_data.substr(0, headers_end);
+
+    size_t content_length = 0;
+    size_t pos = headers_part.find("Content-Length:");
+    if (pos != std::string::npos) {
+        std::istringstream iss(headers_part.substr(pos + 15));
+        iss >> content_length;
+    }
+
+    size_t total_length = headers_end + 4 + content_length;
+    if (request_data.size() >= total_length) {
+        break;  // Full request including body is received
+    }
         }
     }
     

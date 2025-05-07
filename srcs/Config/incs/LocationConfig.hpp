@@ -2,6 +2,7 @@
 #define LOCATIONCONFIG_HPP
 
 #include <string>
+#include <iostream>
 #include <vector>
 #include <set>
 
@@ -19,6 +20,9 @@ private:
     bool _allow_upload;
     bool _allow_delete;
     std::set<std::string> _allowed_mime_types;
+    std::string _upload_dir;
+      static const bool DEBUG = true;
+
 
 public:
     // Constructor with correct initialization order
@@ -40,10 +44,25 @@ public:
     ~LocationConfig();
     
     // Allow methods
-    bool getAllowUpload() const;
+    bool getAllowUpload() const { 
+        if (DEBUG) std::cout << "DEBUG: Get allow_upload = " << _allow_upload << std::endl;
+        return _allow_upload; 
+    }
     bool getAllowDelete() const;
-    void setAllowUpload(bool value);
+    void setAllowUpload(bool allow) { 
+        _allow_upload = allow; 
+        if (DEBUG) std::cout << "DEBUG: Set allow_upload to " << allow << std::endl;
+    }
     void setAllowDelete(bool value);
+    void setUploadDir(const std::string& dir) { 
+        _upload_dir = dir;
+        if (DEBUG) std::cout << "DEBUG: Set upload_dir to " << dir << std::endl;
+    }
+
+    const std::string& getUploadDir() const { 
+        if (DEBUG) std::cout << "DEBUG: Get upload_dir = " << _upload_dir << std::endl;
+        return _upload_dir; 
+    }
 
     // Existing methods
     void setPath(const std::string& p);

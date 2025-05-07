@@ -65,9 +65,8 @@
             <div class="card">
                 <h3>POST Method</h3>
                 <p>Create a new resource on the server:</p>
-                <form action="uploads/test-file.txt" method="POST">
-                    <label for="content">File content:</label>
-                    <textarea id="content" name="content" rows="3" required>Hello from Webserv!</textarea>
+                <form action="/uploads/test-file.txt" method="POST" enctype="text/plain">
+                    <textarea name="textcontent">Hello from venelin!</textarea>
                     <button type="submit">Create File</button>
                 </form>
             </div>

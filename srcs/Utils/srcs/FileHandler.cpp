@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <iostream>  // For std::cerr
 #include <string.h>  // For strerror
+#include "../../Utils/incs/StringUtils.hpp"
 
 std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
     std::vector<std::string> files;
@@ -22,8 +23,25 @@ std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
 }
 
 bool FileHandler::createDirectory(const std::string& path) {
+    // Try to create directory first
     if (mkdir(path.c_str(), 0755) == 0) return true;
-    return (errno == EEXIST) && isDirectory(path);
+    
+    // If failed because already exists
+    if (errno == EEXIST) return isDirectory(path);
+    
+    // If failed because parent doesn't exist, try creating parents
+    if (errno == ENOENT) {
+        size_t pos = path.find_last_of('/');
+        if (pos == std::string::npos) return false;
+        
+        std::string parent = path.substr(0, pos);
+        if (!createDirectory(parent)) return false;
+        return mkdir(path.c_str(), 0755) == 0;
+    }
+    
+    std::cerr << "Error creating directory " << path 
+              << ": " << strerror(errno) << std::endl;
+    return false;
 }
 
 std::string FileHandler::readFile(const std::string& path) {
@@ -34,9 +52,18 @@ std::string FileHandler::readFile(const std::string& path) {
 }
 
 bool FileHandler::writeFile(const std::string& path, const std::string& content) {
-    std::ofstream file(path.c_str(), std::ios::binary);
+    // Estrai solo il contenuto dopo 'textcontent='
+    size_t content_start = content.find("textcontent=");
+    std::string real_content = (content_start != std::string::npos) ? 
+        content.substr(content_start + 12) : content;
+    
+    // Decodifica URL
+    real_content = StringUtils::urlDecode(real_content);
+    
+    std::ofstream file(path.c_str());
     if (!file) return false;
-    file << content;
+    
+    file << real_content;
     return file.good();
 }
 
@@ -47,7 +74,12 @@ bool FileHandler::fileExists(const std::string& path) {
 
 bool FileHandler::isDirectory(const std::string& path) {
     struct stat buffer;
-    return (stat(path.c_str(), &buffer) == 0) && S_ISDIR(buffer.st_mode);
+    if (stat(path.c_str(), &buffer) != 0) {
+        std::cerr << "Error checking directory: " << path 
+                  << " - " << strerror(errno) << std::endl;
+        return false;
+    }
+    return S_ISDIR(buffer.st_mode);
 }
 
 std::string FileHandler::getDirectory(const std::string& path) {
@@ -79,26 +111,28 @@ bool FileHandler::deleteDirectory(const std::string& path) {
 
 std::string FileHandler::sanitizePath(const std::string& path) {
     std::string clean_path;
+    bool last_was_slash = false;
+    const size_t len = path.length();
     
-    // Remove invalid characters and normalize path
-    for (size_t i = 0; i < path.size(); ++i) {
-        char c = path[i];
+    for (size_t i = 0; i < len; ++i) {
+        char c = path[i];  // Removed const to allow modification
         
-        // Skip semicolons and other invalid characters
-        if (c == ';') continue;
+        // Skip control characters and special chars
+        if (c <= 32 || c == ';' || c == '|' || c == '&') continue;
         
-        // Handle directory separators
-        if (c == '\\') c = '/'; // Normalize Windows paths
+        // Normalize slashes
+        if (c == '\\') c = '/';
         
-        // Avoid duplicate slashes
-        if (c == '/' && !clean_path.empty() && clean_path[clean_path.size()-1] == '/') continue;
+        // Skip duplicate slashes
+        if (c == '/' && last_was_slash) continue;
         
+        last_was_slash = (c == '/');
         clean_path += c;
     }
     
     // Remove trailing slash unless it's root
-    if (clean_path.size() > 1 && clean_path[clean_path.size()-1] == '/') {
-        clean_path.erase(clean_path.size()-1);
+    if (clean_path.length() > 1 && clean_path[clean_path.length()-1] == '/') {
+        clean_path.erase(clean_path.length()-1, 1);
     }
     
     return clean_path;

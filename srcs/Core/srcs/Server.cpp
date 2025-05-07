@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 17:41:48 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/07 21:21:01 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,7 +110,7 @@ void Server::handleClient(int client_fd) {
             }
         } catch (const std::exception& e) {
             std::cerr << "Request error: " << e.what() << std::endl;
-            sendErrorResponse(&client, 400);  // Bad Request
+            sendErrorResponse(&client, 400, "cazzo");  // Bad Request
             removeClient(client_fd);
             return;
         }
@@ -230,13 +230,13 @@ void Server::handleGetRequest(Client* client) {
             if (location.getAutoIndex()) {
                 handleDirectoryListing(client, path);
             } else {
-                sendErrorResponse(client, 403); // Forbidden
+                sendErrorResponse(client, 403, "cazzo"); // Forbidden
             }
             return;
         }
 
         if (!FileHandler::fileExists(path)) {
-            sendErrorResponse(client, 404); // Not Found
+            sendErrorResponse(client, 404, "cazzo"); // Not Found
             return;
         }
 
@@ -244,57 +244,53 @@ void Server::handleGetRequest(Client* client) {
 
     } catch (const std::exception& e) {
         std::cerr << "GET request error: " << e.what() << std::endl;
-        sendErrorResponse(client, 404);  // Send 404 instead of 500 for missing files
+        sendErrorResponse(client, 404, "cazzo");  // Send 404 instead of 500 for missing files
     }
 }
 
 void Server::handlePostRequest(Client* client) {
     try {
-        // Check if this is actually a DELETE method using _method parameter
-        // This is a common technique for HTML forms that don't support DELETE directly
-        std::string requestBody = client->request.getBody();
-        if (requestBody.find("_method=DELETE") != std::string::npos) {
-            handleDeleteRequest(client);
+        std::string requestPath = client->request.getPath();
+        requestPath = FileHandler::sanitizePath(requestPath);
+        
+        const LocationConfig& location = config.getLocationForPath(requestPath);
+        std::string uploadDir = location.getUploadDir();
+        
+        if (uploadDir.empty()) {
+            //uploadDir = config.getUploadDir();
+            sendErrorResponse(client, 500, "Upload directory not configured");
             return;
+            
         }
 
-        const LocationConfig& location = config.getLocationForPath(client->request.getPath());
-        
-        // Check if uploads are allowed in this location
-        if (!location.getAllowUpload()) {
-            sendErrorResponse(client, 403); // Forbidden
-            return;
+        if (!FileHandler::isDirectory(uploadDir)) {
+            std::cout << "Creating upload directory: " << uploadDir << std::endl;
+            if (!FileHandler::createDirectory(uploadDir)) {
+                std::cerr << "Failed to create upload directory: " << uploadDir << std::endl;
+                sendErrorResponse(client, 500, "Could not create upload directory");
+                return;
+            }
         }
         
-        // Check if this is a CGI request
-        if (isCgiRequest(location, client->request.getPath())) {
-            std::cout << "Executing CGI for POST: " << client->request.getPath() << std::endl;
-            CGIExecutor cgi(client->request, location);
-            std::string output = cgi.execute();
-            sendResponse(client, 200, output);
-            return;
-        }
+        // Get filename and create full path
+        std::string filename = requestPath.substr(requestPath.find_last_of('/') + 1);
+        std::string fullPath = FileHandler::sanitizePath(uploadDir + "/" + filename);
         
-        // Handle file upload
-        std::string uploadPath = config.getUploadDir() + "/" + client->request.getPath();
+        // Debug output
+        std::cout << "Attempting to write to: " << fullPath << std::endl;
         
-        // Create directory structure if needed
-        std::size_t last_slash = uploadPath.find_last_of('/');
-        if (last_slash != std::string::npos) {
-            FileHandler::createDirectory(uploadPath.substr(0, last_slash));
-        }
-
-        if (FileHandler::writeFile(uploadPath, client->request.getBody())) {
-            std::string successContent = "<html><body><h1>Upload Successful</h1>";
-            successContent += "<p>File uploaded to: " + client->request.getPath() + "</p>";
-            successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
-            sendResponse(client, 201, successContent);
+        // Write file
+        if (FileHandler::writeFile(fullPath, client->request.getBody())) {
+            std::cout << "Successfully wrote " << client->request.getBody().size() 
+                      << " bytes to " << fullPath << std::endl;
+            sendResponse(client, 201, "File uploaded successfully");
         } else {
-            sendErrorResponse(client, 500);
+            sendErrorResponse(client, 500, "Failed to write file");
         }
+        
     } catch (const std::exception& e) {
-        std::cerr << "POST request error: " << e.what() << std::endl;
-        sendErrorResponse(client, 500);
+        std::cerr << "Upload error: " << e.what() << std::endl;
+        sendErrorResponse(client, 500, "Internal server error");
     }
 }
 
@@ -311,13 +307,13 @@ void Server::handleDeleteRequest(Client* client) {
         
         // Check if deletion is allowed
         if (!location.getAllowDelete()) {
-            sendErrorResponse(client, 403); // Forbidden
+            sendErrorResponse(client, 403, "cazzo"); // Forbidden
             return;
         }
         
         // Check if file exists
         if (!FileHandler::fileExists(path)) {
-            sendErrorResponse(client, 404); // Not Found
+            sendErrorResponse(client, 404, "cazzo"); // Not Found
             return;
         }
         
@@ -331,7 +327,7 @@ void Server::handleDeleteRequest(Client* client) {
                 successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
                 sendResponse(client, 200, successContent);
             } else {
-                sendErrorResponse(client, 500); // Internal Server Error
+                //sendErrorResponse(client, 500, "cazzo"); // Internal Server Error
             }
             return;
         }
@@ -363,12 +359,28 @@ if (!requestPath.empty() && requestPath[requestPath.size() - 1] != '/') {
             successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
             sendResponse(client, 204, successContent); // No Content
         } else {
-            sendErrorResponse(client, 500); // Internal Server Error
+            //sendErrorResponse(client, 500, "cazzo"); // Internal Server Error
         }
         
     } catch (const std::exception& e) {
         std::cerr << "DELETE request error: " << e.what() << std::endl;
-        sendErrorResponse(client, 500);
+        //sendErrorResponse(client, 500, "cazzo");
+    }
+}
+
+
+
+void Server::handleRequest(const Request& request, Response& response) {
+    // Implementation of handleRequest that uses the passed parameters
+    if (request.getMethod() == "GET") {
+        response.setStatus(200);
+        response.setBody("Hello from GET handler!");
+    } else if (request.getMethod() == "POST") {
+        response.setStatus(200);
+        response.setBody("Hello from POST handler!");
+    } else {
+        response.setStatus(405);
+        response.setBody("Method Not Allowed");
     }
 }
 
@@ -392,42 +404,37 @@ void Server::processRequest(Client* client) {
         } else if (method == "DELETE") {
             handleDeleteRequest(client);
         } else {
-            sendErrorResponse(client, 501); // Not Implemented
+            sendErrorResponse(client, 501, "cazzo"); // Not Implemented
         }
     } catch (const std::exception& e) {
         std::cerr << "Request error: " << e.what() << std::endl;
-        sendErrorResponse(client, 400); // Bad Request
+        sendErrorResponse(client, 400, "cazzo"); // Bad Request
     }
 }
 
-void Server::acceptNewConnection() {  // Remove parameter
+void Server::acceptNewConnection() {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
-    
-    // Use class member server_fd instead of parameter
     int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
 
-    // Rest of the implementation remains the same...
-    if (client_fd == -1) {
-        std::cerr << "accept() failed: " << strerror(errno) << std::endl;
+    if (client_fd < 0) {
+        if (errno != EWOULDBLOCK && errno != EAGAIN)
+            std::cerr << "accept() failed: " << strerror(errno) << std::endl;
         return;
     }
 
-    fcntl(client_fd, F_SETFL, O_NONBLOCK);
+    // Make client_fd non-blocking
+    if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1) {
+        std::cerr << "fcntl() failed on client_fd: " << strerror(errno) << std::endl;
+        close(client_fd);
+        return;
+    }
 
-    pollfd client_pollfd;
-    client_pollfd.fd = client_fd;
-    client_pollfd.events = POLLIN;
-    poll_fds.push_back(client_pollfd);
-
+    addPollFD(client_fd, POLLIN);
     clients[client_fd] = Client(client_fd);
-
-    std::cout << "New connection from "
-              << inet_ntoa(client_addr.sin_addr)
-              << ":" << ntohs(client_addr.sin_port)
-              << " (FD: " << client_fd << ")"
-              << std::endl;
+    std::cout << "New connection accepted (FD: " << client_fd << ")" << std::endl;
 }
+
 
 void Server::run() {
     std::cout << "Starting server manager..." << std::endl;
@@ -494,22 +501,34 @@ void Server::sendResponse(Client* client, int status, const std::string& content
     send(client->fd, response.c_str(), response.size(), 0);
 }
 
-void Server::sendErrorResponse(Client* client, int errorCode) {
-    std::string error_path = config.getRoot() + "/errors/" + StringUtils::toString(errorCode) + ".html";
+void Server::sendErrorResponse(Client* client, int errorCode, const std::string& message) {
+    std::string errorPage;
     
     try {
-        if (FileHandler::fileExists(error_path)) {
-            sendFileResponse(client, error_path);
-        } else {
-            std::string content = "<h1>" + StringUtils::toString(errorCode) + " Error</h1>";
-            sendResponse(client, errorCode, content);
+        errorPage = getErrorPage(errorCode);
+        if (!message.empty()) {
+            // Insert custom message into error page
+            size_t pos = errorPage.find("</h1>");
+            if (pos != std::string::npos) {
+                errorPage.insert(pos + 5, "<p>" + message + "</p>");
+            }
         }
-    } catch (const std::exception& e) {
-        std::string fallback = "HTTP/1.1 " + StringUtils::toString(errorCode) + " Error\r\n"
-                             "Content-Type: text/plain\r\n"
-                             "Content-Length: 0\r\n\r\n";
-        send(client->fd, fallback.c_str(), fallback.size(), 0);
+    } catch (...) {
+        // Fallback error page if custom page fails
+        errorPage = "<html><body><h1>" + toString(errorCode) + " Error</h1>";
+        if (!message.empty()) {
+            errorPage += "<p>" + message + "</p>";
+        }
+        errorPage += "</body></html>";
     }
+
+    std::string response = "HTTP/1.1 " + toString(errorCode) + " Error\r\n";
+    response += "Content-Type: text/html\r\n";
+    response += "Content-Length: " + toString(errorPage.size()) + "\r\n";
+    response += "Connection: close\r\n";
+    response += "\r\n" + errorPage;
+
+    send(client->fd, response.c_str(), response.size(), 0);
 }
 
 void Server::cleanup() {

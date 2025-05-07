@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 19:04:19 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/07 20:53:15 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,11 +99,11 @@ ServerConfig::ServerConfig(const std::string& configFilePath) : port(8080), root
 
 // ServerConfig.cpp
 const std::string& ServerConfig::getUploadDir() const {
-    return upload_dir;  // Return actual member variable
+    return _upload_dir;  // Return actual member variable
 }
 
 void ServerConfig::setUploadDir(const std::string& dir) {
-    upload_dir = dir;
+    _upload_dir = dir;
 }
 
 void ServerConfig::loadConfig(const std::string& configFilePath)
@@ -144,15 +144,33 @@ if (!configFile.is_open())
 
 void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::string& path) {
     LocationConfig location;
-    location.setPath(path); // Use setter
+    location.setPath(path);
 
     std::string line;
     while (std::getline(configFile, line)) {
+
+        line.erase(0, line.find_first_not_of(" \t"));
+        line.erase(line.find_last_not_of(" \t") + 1);
+        
+         if (line.empty() || line[0] == '#') continue;
         std::istringstream iss(line);
         std::string key;
         iss >> key;
+        if (key == "allow_upload") {
+            std::string value;
+            iss >> value;
+            location.setAllowUpload(value == "on");
 
-        if (key == "root") {
+std::cout << "DEBUG: Set allow_upload to " << value << std::endl;        } 
+        else if (key == "upload_dir") {
+            std::string dir;
+            iss >> dir;
+ if (!dir.empty() && dir[dir.length()-1] == ';') {
+                dir.erase(dir.length()-1);
+            }            
+            location.setUploadDir(dir);
+        }
+        else if (key == "root") {
             std::string root;
             iss >> root;
             location.setRoot(root);

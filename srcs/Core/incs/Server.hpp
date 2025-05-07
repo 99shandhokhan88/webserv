@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/09 15:43:39 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 17:35:10 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/07 19:52:16 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,10 +72,13 @@ public:
     // HTTP handling
     void processRequest(Client* client);
     void sendResponse(Client* client, int status, const std::string& content);
-    void sendErrorResponse(Client* client, int errorCode);
+    void sendErrorResponse(Client* client, int errorCode, const std::string& message);
+
 
     // Static cleanup
     static void cleanup();
+    void handleRequest(const Request& request, Response& response);
+
 
     // Getters
     int getServerFd() const;
