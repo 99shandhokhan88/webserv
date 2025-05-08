@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:54:29 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/07 21:29:45 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/08 22:34:42 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,6 +60,12 @@ static std::string urlDecode(const std::string &str) {
 
     // Convert to uppercase
     static std::string toUpper(const std::string& str);
+
+
+
 };
+
+std::string extractBoundary(const std::string& contentType);
+
 
 #endif // STRINGUTILS_HPP

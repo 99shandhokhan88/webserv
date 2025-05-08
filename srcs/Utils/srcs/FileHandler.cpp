@@ -137,3 +137,11 @@ std::string FileHandler::sanitizePath(const std::string& path) {
     
     return clean_path;
 }
+
+
+bool writeBinaryFile(const std::string& path, const std::string& data) {
+    std::ofstream file(path.c_str(), std::ios::binary);
+    if (!file) return false;
+    file.write(data.c_str(), data.size());
+    return file.good();
+}

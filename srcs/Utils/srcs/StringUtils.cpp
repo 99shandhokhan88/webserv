@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 02:54:42 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/18 23:52:17 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/09 00:04:02 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,4 +70,14 @@ std::string StringUtils::toUpper(const std::string& str)
     
     return  (result);
     
+}
+
+
+
+std::string extractBoundary(const std::string& contentType) {
+    size_t pos = contentType.find("boundary=");
+    if (pos == std::string::npos) {
+        return "";
+    }
+    return contentType.substr(pos + 9); // 9 is length of "boundary="
 }

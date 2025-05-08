@@ -59,4 +59,6 @@ static std::string normalizePath(const std::string& path) {
 }
 };
 
+    bool writeBinaryFile(const std::string& path, const std::string& data);
+
 #endif
