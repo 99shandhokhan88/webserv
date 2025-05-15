@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 02:54:42 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/09 00:04:02 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 19:25:27 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #include "StringUtils.hpp"          // Local header
 #include <algorithm>                // Standard library
 #include <sstream> // For std::istringstream
+#include "../../Config/incs/ServerConfig.hpp"
 
 
 // Trim leading and trailing whitespace from a string
@@ -74,10 +75,31 @@ std::string StringUtils::toUpper(const std::string& str)
 
 
 
+
+
+// Modify the extractBoundary method to be more robust
 std::string extractBoundary(const std::string& contentType) {
     size_t pos = contentType.find("boundary=");
     if (pos == std::string::npos) {
-        return "";
+        throw std::runtime_error("No boundary found in Content-Type");
     }
-    return contentType.substr(pos + 9); // 9 is length of "boundary="
+    
+    pos += 9; // Move past "boundary="
+    
+    // Boundary might be quoted or not
+    if (pos < contentType.size() && contentType[pos] == '"') {
+        pos++; // Skip opening quote
+        size_t end = contentType.find('"', pos);
+        if (end == std::string::npos) {
+            return contentType.substr(pos);
+        }
+        return contentType.substr(pos, end - pos);
+    } else {
+        // Unquoted boundary ends at first semicolon or end of string
+        size_t end = contentType.find(';', pos);
+        if (end == std::string::npos) {
+            return contentType.substr(pos);
+        }
+        return contentType.substr(pos, end - pos);
+    }
 }

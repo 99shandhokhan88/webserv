@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/09 00:03:52 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 19:25:10 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,15 +90,17 @@ void Server::setupSocket() {
     std::cout << "Server started on port " << config.getPort() << " (FD: " << server_fd << ")" << std::endl;
 }
 
+// Replace the handleClient method with this improved version
 void Server::handleClient(int client_fd) {
     Client& client = clients[client_fd];
-    std::vector<char> buffer(1024);  // Use a dynamic buffer
-
+    std::vector<char> buffer(4096);  // Increase buffer size for larger chunks
+    
     ssize_t bytes_read;
     while ((bytes_read = recv(client_fd, buffer.data(), buffer.size(), 0)) > 0) {
         client.appendRequestData(buffer.data(), bytes_read);
-
+        
         try {
+            // Only try to parse and process if the request is complete
             if (client.isRequestComplete()) {
                 client.parseRequest();
                 processRequest(&client);
@@ -107,18 +109,26 @@ void Server::handleClient(int client_fd) {
                     return;
                 }
                 client.reset();
+            } else {
+                // Not complete yet, continue reading
+                break;
             }
         } catch (const std::exception& e) {
             std::cerr << "Request error: " << e.what() << std::endl;
-            sendErrorResponse(&client, 400, "Bad Request");
+            sendErrorResponse(&client, 400, "Bad Request", servers[0]->config);
             removeClient(client_fd);
             return;
         }
     }
 
-    // Connection closed by client
+    // Handle connection close or error
     if (bytes_read == 0) {
         removeClient(client_fd);
+    } else if (bytes_read < 0) {
+        if (errno != EWOULDBLOCK && errno != EAGAIN) {
+            std::cerr << "recv() error: " << strerror(errno) << std::endl;
+            removeClient(client_fd);
+        }
     }
 }
 
@@ -138,6 +148,30 @@ std::string Server::getErrorPage(int errorCode) const {
     std::stringstream ss;
     ss << "<html><body><h1>" << errorCode << " Error</h1></body></html>";
     return ss.str();
+}
+
+
+size_t getContentLength(const std::string& headers) {
+    size_t pos = headers.find("Content-Length:");
+    if (pos == std::string::npos) {
+        return 0;
+    }
+    
+    pos = headers.find(':', pos) + 1;
+    while (pos < headers.size() && isspace(headers[pos])) {
+        pos++;
+    }
+    
+    size_t end = pos;
+    while (end < headers.size() && isdigit(headers[end])) {
+        end++;
+    }
+    
+    if (pos == end) {
+        return 0;
+    }
+    
+    return static_cast<size_t>(atoi(headers.substr(pos, end - pos).c_str()));
 }
 
 void Server::sendFileResponse(Client* client, const std::string& path) {
@@ -218,20 +252,20 @@ void Server::handleGetRequest(Client* client) {
             if (location.getAutoIndex()) {
                 handleDirectoryListing(client, path);
             } else {
-                sendErrorResponse(client, 403, "Forbidden");
+                sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
             }
             return;
         }
 
         if (!FileHandler::fileExists(path)) {
-            sendErrorResponse(client, 404, "Not Found");
+            sendErrorResponse(client, 404, "Not Found", servers[0]->config);
             return;
         }
 
         sendFileResponse(client, path);
     } catch (const std::exception& e) {
         std::cerr << "Error handling GET request: " << e.what() << std::endl;
-        sendErrorResponse(client, 500, "Internal Server Error");
+        sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
     }
 }
 
@@ -242,36 +276,75 @@ void Server::removeClient(int client_fd) {
 }
 
 
-void Server::sendErrorResponse(Client* client, int statusCode, const std::string& message) {
-    // Since this is static, we need access to a server object to get the error page
-    // Either pass a server object or use the first available server
+void Server::sendErrorResponse(Client* client, int statusCode, const std::string& message, const ServerConfig& config) {
     std::string errorPage;
-    if (!servers.empty()) {
-        errorPage = servers[0]->getErrorPage(statusCode);
-    } else {
-        // Default error page if no server is available
+    const std::map<int, std::string>& errorPages = config.getErrorPages();
+    std::map<int, std::string>::const_iterator it = errorPages.find(statusCode);
+
+    // Try to get configured error page
+    if (it != errorPages.end()) {
+        try {
+            errorPage = FileHandler::readFile(config.getRoot() + it->second);
+        } catch (const std::exception& e) {
+            std::cerr << "Error reading error page: " << e.what() << std::endl;
+        }
+    }
+
+    // Fallback to default error page
+    if (errorPage.empty()) {
         std::stringstream ss;
-        ss << "<html><body><h1>" << statusCode << " Error</h1></body></html>";
+        ss << "<html><head><title>" << statusCode << " " << message << "</title></head>"
+           << "<body><h1>" << statusCode << " " << message << "</h1>"
+           << "<p>Error details: " << message << "</p>"
+           << "<p>Please try again later or contact the administrator.</p></body></html>";
         errorPage = ss.str();
     }
-    
+
     std::string response = "HTTP/1.1 " + toString(statusCode) + " " + message + "\r\n";
+    response += "Access-Control-Allow-Origin: *\r\n";
+    response += "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n";
+    response += "Access-Control-Allow-Headers: Content-Type, Authorization\r\n";
     response += "Content-Type: text/html\r\n";
     response += "Content-Length: " + toString(errorPage.size()) + "\r\n";
+    
+    if (client->shouldKeepAlive()) {
+        response += "Connection: keep-alive\r\n";
+        response += "Keep-Alive: timeout=5, max=100\r\n";
+    } else {
+        response += "Connection: close\r\n";
+    }
+    
     response += "\r\n" + errorPage;
+    
     send(client->fd, response.c_str(), response.size(), 0);
 }
 
+
+// Modified handlePostRequest to better handle Content-Length
 void Server::handlePostRequest(Client* client) {
     try {
         std::string requestPath = client->request.getPath();
         requestPath = FileHandler::sanitizePath(requestPath);
-        
+        std::cout << "DEBUG: Request path = " << requestPath << std::endl;
+
         const LocationConfig& location = config.getLocationForPath(requestPath);
+        std::cout << "DEBUG: Available locations: ";
+        // Print available locations for debugging
+        const std::vector<LocationConfig>& locations = config.getLocations();
+        for (std::vector<LocationConfig>::const_iterator it = locations.begin(); 
+             it != locations.end(); ++it) {
+            std::cout << " - '" << it->getPath() << "'";
+        }
+        std::cout << std::endl;
+        
+        std::cout << "DEBUG: Location path = " << location.getPath() << std::endl;
+
         std::string uploadDir = location.getUploadDir();
+        std::cout << "DEBUG: Get upload_dir = " << location.getUploadDir() << std::endl;
+        std::cout << "DEBUG: Upload directory = " << uploadDir << std::endl;
         
         if (uploadDir.empty()) {
-            sendErrorResponse(client, 500, "Upload directory not configured");
+            sendErrorResponse(client, 500, "Upload directory not configured", servers[0]->config);
             return;
         }
 
@@ -280,59 +353,269 @@ void Server::handlePostRequest(Client* client) {
             std::cout << "Creating upload directory: " << uploadDir << std::endl;
             if (!FileHandler::createDirectory(uploadDir)) {
                 std::cerr << "Failed to create upload directory: " << uploadDir << std::endl;
-                sendErrorResponse(client, 500, "Could not create upload directory");
+                sendErrorResponse(client, 500, "Could not create upload directory", servers[0]->config);
                 return;
             }
         }
         
-        // Extract content type from headers
+        // Extract content type and length from headers
         std::string contentType = client->request.getHeader("Content-Type");
+        std::string contentLengthStr = client->request.getHeader("Content-Length");
+        
+        // Check if we have a Content-Length header and validate it
+        if (!contentLengthStr.empty()) {
+            int contentLength = atoi(contentLengthStr.c_str());
+            if (contentLength <= 0) {
+                std::cerr << "WARNING: Invalid or zero Content-Length: " << contentLengthStr << std::endl;
+                if (contentType.find("multipart/form-data") != std::string::npos) {
+                    // For multipart form data, we need content
+                    sendErrorResponse(client, 400, "Empty multipart form data", servers[0]->config);
+                    return;
+                }
+            }
+        }
+        
+        // Check the request body
+        const std::string& requestBody = client->request.getBody();
+        if (requestBody.empty()) {
+            std::cerr << "WARNING: Empty request body received" << std::endl;
+            
+            // For multipart, this is an error
+            if (contentType.find("multipart/form-data") != std::string::npos) {
+                std::string errorContent = "<html><body><h1>Empty Form Data</h1>";
+                errorContent += "<p>No file data was received. Please select a file and try again.</p>";
+                errorContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
+                sendResponse(client, 400, errorContent); // Bad Request
+                return;
+            }
+        }
+        
+        // Handle multipart/form-data (file uploads)
         if (contentType.find("multipart/form-data") != std::string::npos) {
+            if (requestBody.empty()) {
+                std::string errorContent = "<html><body><h1>Empty Form Data</h1>";
+                errorContent += "<p>No file data was received. Please select a file and try again.</p>";
+                errorContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
+                sendResponse(client, 400, errorContent); // Bad Request
+                return;
+            }
+            
             std::string boundary = extractBoundary(contentType);
             parseMultipartBody(client->request.getBody(), boundary, uploadDir);
             sendResponse(client, 201, "Multipart file uploaded successfully");
             return;
         }
         
-        // Default file upload handling (not multipart)
-        std::string filename = "uploaded_file.jpg";  // Example, take filename from HTML form
-        std::string fullPath = FileHandler::sanitizePath(uploadDir + "/" + filename);
-        
-        // Debug output
-        std::cout << "Attempting to write to: " << fullPath << std::endl;
-        
-        // Write the file to upload directory
-        if (FileHandler::writeFile(fullPath, client->request.getBody())) {
-            std::cout << "Successfully wrote " << client->request.getBody().size() 
-                      << " bytes to " << fullPath << std::endl;
-            sendResponse(client, 201, "File uploaded successfully");
-        } else {
-            sendErrorResponse(client, 500, "Failed to write file");
+        // Handle application/x-www-form-urlencoded
+        if (contentType.find("application/x-www-form-urlencoded") != std::string::npos) {
+            std::map<std::string, std::string> formData;
+            parseFormUrlEncoded(client->request.getBody(), formData);
+            
+            // Log the form data
+            std::cout << "Received form data:" << std::endl;
+            for (std::map<std::string, std::string>::const_iterator it = formData.begin(); 
+                 it != formData.end(); ++it) {
+                std::cout << "  " << it->first << " = " << it->second << std::endl;
+            }
+            
+            // Esempio: salva i dati del form in un file
+            std::string formDataContent;
+            for (std::map<std::string, std::string>::const_iterator it = formData.begin(); 
+                 it != formData.end(); ++it) {
+                formDataContent += it->first + ": " + it->second + "\n";
+            }
+            
+            std::string timestamp = toString(time(NULL));
+            std::string filename = "form_" + timestamp + ".txt";
+            std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
+            
+            if (FileHandler::writeFile(fullPath, formDataContent)) {
+                std::string successContent = "<html><body><h1>Form Data Received</h1>";
+                successContent += "<p>Your form has been successfully submitted.</p>";
+                successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
+                sendResponse(client, 201, successContent);
+            } else {
+                sendErrorResponse(client, 500, "Failed to process form data", servers[0]->config);
+            }
+            return;
         }
+        
+        // Handle text/plain or other content types
+        if (contentType.find("text/plain") != std::string::npos || contentType.empty()) {
+            std::string filename = "text_" + toString(time(NULL)) + ".txt";
+            std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
+            
+            if (FileHandler::writeFile(fullPath, client->request.getBody())) {
+                std::string successContent = "<html><body><h1>Text Received</h1>";
+                successContent += "<p>Your text has been successfully saved.</p>";
+                successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
+                sendResponse(client, 201, successContent);
+            } else {
+                sendErrorResponse(client, 500, "Failed to save text data", servers[0]->config);
+            }
+            return;
+        }
+        
+        // Unknown content type
+        std::cerr << "Unsupported content type: " << contentType << std::endl;
+        sendErrorResponse(client, 415, "Unsupported Media Type", servers[0]->config);
         
     } catch (const std::exception& e) {
         std::cerr << "Upload error: " << e.what() << std::endl;
-        sendErrorResponse(client, 500, "Internal server error");
+        sendErrorResponse(client, 500, "Internal server error", servers[0]->config);
     }
 }
 
+void Server::parseFormUrlEncoded(const std::string& body, std::map<std::string, std::string>& formData) {
+    std::string remainingData = body;
+    size_t pos = 0;
+    
+    // Dividi il corpo mediante '&'
+    while ((pos = remainingData.find('&')) != std::string::npos) {
+        std::string pair = remainingData.substr(0, pos);
+        remainingData = remainingData.substr(pos + 1);
+        
+        // Dividi la coppia mediante '='
+        size_t equalPos = pair.find('=');
+        if (equalPos != std::string::npos) {
+            std::string key = StringUtils::urlDecode(pair.substr(0, equalPos));
+            std::string value = StringUtils::urlDecode(pair.substr(equalPos + 1));
+            formData[key] = value;
+        }
+    }
+    
+    // Gestisci l'ultima coppia (o l'unica se non ci sono '&')
+    if (!remainingData.empty()) {
+        size_t equalPos = remainingData.find('=');
+        if (equalPos != std::string::npos) {
+            std::string key = StringUtils::urlDecode(remainingData.substr(0, equalPos));
+            std::string value = StringUtils::urlDecode(remainingData.substr(equalPos + 1));
+            formData[key] = value;
+        }
+    }
+}
+
+
+// Update the parseMultipartBody method to be more robust:
 void Server::parseMultipartBody(const std::string& body, const std::string& boundary, const std::string& uploadDir) {
-    std::string delimiter = "--" + boundary;
-    size_t pos = body.find(delimiter);
-    if (pos == std::string::npos) return;
-
-    size_t fileStart = body.find("\r\n\r\n", pos);  // Start of file content
-    if (fileStart == std::string::npos) return;
-
-    fileStart += 4;  // Skip \r\n\r\n
-    size_t fileEnd = body.find(delimiter, fileStart);
-    if (fileEnd == std::string::npos) return;
-
-    std::string fileContent = body.substr(fileStart, fileEnd - fileStart - 2);  // -2 to remove \r\n
-
-    std::string filename = "uploaded_file.jpg";  // Or extract from Content-Disposition
-    std::string fullPath = uploadDir + "/" + filename;
-    FileHandler::writeFile(fullPath, fileContent);
+    // Check for empty body first
+    if (body.empty()) {
+        std::cerr << "ERROR: Received empty body for multipart/form-data request\n";
+        throw std::runtime_error("Empty multipart data received");
+    }
+    
+    // The full boundary pattern includes -- at the start
+    std::string startBoundary = "--" + boundary;
+    std::string endBoundary = startBoundary + "--";
+    
+    std::cout << "DEBUG: Multipart processing started\n";
+    std::cout << "DEBUG: Body size: " << body.size() << " bytes\n";
+    std::cout << "DEBUG: Boundary: " << boundary << "\n";
+    std::cout << "DEBUG: First 50 chars of body: " << body.substr(0, std::min(body.size(), static_cast<size_t>(50))) << "\n";
+    
+    // Find all boundary positions
+    std::vector<size_t> boundaryPositions;
+    size_t pos = 0;
+    while ((pos = body.find(startBoundary, pos)) != std::string::npos) {
+        boundaryPositions.push_back(pos);
+        pos += startBoundary.length();
+    }
+    
+    if (boundaryPositions.empty()) {
+        std::cerr << "ERROR: No boundaries found in multipart data\n";
+        throw std::runtime_error("Malformed multipart data");
+    }
+    
+    std::cout << "DEBUG: Found " << boundaryPositions.size() << " boundaries\n";
+    
+    // Process each part
+    for (size_t i = 0; i < boundaryPositions.size(); i++) {
+        // Skip the boundary itself
+        size_t partStart = boundaryPositions[i] + startBoundary.length();
+        
+        // Check if this is the final boundary
+        if (body.compare(boundaryPositions[i], endBoundary.length(), endBoundary) == 0) {
+            std::cout << "DEBUG: End boundary found\n";
+            break; // This is the end boundary
+        }
+        
+        // Skip the CRLF after the boundary
+        if (partStart < body.size() && body.compare(partStart, 2, "\r\n") == 0) {
+            partStart += 2;
+        } else {
+            std::cerr << "WARNING: Expected CRLF after boundary not found\n";
+        }
+        
+        // Find the end of this part (next boundary or end of data)
+        size_t partEnd = (i + 1 < boundaryPositions.size()) 
+                         ? boundaryPositions[i + 1]
+                         : body.length();
+                         
+        // Split headers and content
+        size_t headersEnd = body.find("\r\n\r\n", partStart);
+        if (headersEnd == std::string::npos || headersEnd >= partEnd) {
+            std::cerr << "ERROR: Malformed multipart format (headers end not found)\n";
+            continue;
+        }
+        
+        // Extract headers section
+        std::string headers = body.substr(partStart, headersEnd - partStart);
+        
+        // Find content-disposition header
+        size_t dispPos = headers.find("Content-Disposition:");
+        if (dispPos == std::string::npos) {
+            std::cerr << "ERROR: Content-Disposition header not found\n";
+            continue;
+        }
+        
+        // Extract filename
+        size_t filenamePos = headers.find("filename=\"", dispPos);
+        if (filenamePos == std::string::npos) {
+            std::cout << "INFO: No filename found, might be a form field\n";
+            continue; // Skip non-file parts
+        }
+        
+        filenamePos += 10; // Skip "filename=\""
+        size_t filenameEnd = headers.find("\"", filenamePos);
+        if (filenameEnd == std::string::npos) {
+            std::cerr << "ERROR: Malformed filename in Content-Disposition\n";
+            continue;
+        }
+        
+        std::string filename = headers.substr(filenamePos, filenameEnd - filenamePos);
+        if (filename.empty()) {
+            std::cout << "INFO: Empty filename, skipping\n";
+            continue;
+        }
+        
+        // Skip headers and the blank line
+        size_t contentStart = headersEnd + 4; // +4 for \r\n\r\n
+        
+        // Content ends at the next boundary minus \r\n
+        size_t contentEnd = partEnd;
+        if (contentEnd > 2 && body.compare(partEnd - 2, 2, "\r\n") == 0) {
+            contentEnd -= 2; // Remove trailing CRLF before boundary
+        }
+        
+        // Extract binary content
+        std::string content = body.substr(contentStart, contentEnd - contentStart);
+        
+        // Create full path
+        std::string fullPath = uploadDir + "/" + filename;
+        fullPath = FileHandler::sanitizePath(fullPath);
+        
+        std::cout << "DEBUG: Saving file: " << filename << "\n";
+        std::cout << "DEBUG: Full path: " << fullPath << "\n";
+        std::cout << "DEBUG: Content size: " << content.size() << " bytes\n";
+        
+        // Write file
+        if (!writeBinaryFile(fullPath, content)) {
+            std::cerr << "ERROR: Failed to write file: " << fullPath << "\n";
+            throw std::runtime_error("Failed to write uploaded file");
+        }
+        
+        std::cout << "SUCCESS: File '" << filename << "' saved successfully\n";
+    }
 }
 
 void Server::handleDeleteRequest(Client* client) {
@@ -348,13 +631,13 @@ void Server::handleDeleteRequest(Client* client) {
         
         // Check if deletion is allowed
         if (!location.getAllowDelete()) {
-            sendErrorResponse(client, 403, "Forbidden");
+            sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
             return;
         }
         
         // Check if file exists
         if (!FileHandler::fileExists(path)) {
-            sendErrorResponse(client, 404, "Not Found");
+            sendErrorResponse(client, 404, "Not Found", servers[0]->config);
             return;
         }
         
@@ -368,7 +651,7 @@ void Server::handleDeleteRequest(Client* client) {
                 successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
                 sendResponse(client, 200, successContent);
             } else {
-                sendErrorResponse(client, 500, "Internal Server Error");
+                sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
             }
             return;
         }
@@ -400,12 +683,12 @@ void Server::handleDeleteRequest(Client* client) {
             successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
             sendResponse(client, 204, successContent); // No Content
         } else {
-            sendErrorResponse(client, 500, "Internal Server Error");
+            sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
         }
         
     } catch (const std::exception& e) {
         std::cerr << "DELETE request error: " << e.what() << std::endl;
-        sendErrorResponse(client, 500, "Internal Server Error");
+        sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
     }
 }
 
@@ -424,6 +707,10 @@ void Server::handleRequest(const Request& request, Response& response) {
 }
 
 void Server::processRequest(Client* client) {
+    if (client->request.getMethod() == "OPTIONS") {
+        servers[0]->handleOptionsRequest(client);
+        return;
+    }
     try {
         const Request& req = client->request;
         
@@ -446,14 +733,14 @@ void Server::processRequest(Client* client) {
             } else if (method == "DELETE") {
                 servers[0]->handleDeleteRequest(client);
             } else {
-                Server::sendErrorResponse(client, 501, "Not Implemented"); 
+                Server::sendErrorResponse(client, 501, "Not Implemented", servers[0]->config); 
             }
         } else {
             throw std::runtime_error("No server available to handle request");
         }
     } catch (const std::exception& e) {
         std::cerr << "Request error: " << e.what() << std::endl;
-        Server::sendErrorResponse(client, 400, "Bad Request");
+        Server::sendErrorResponse(client, 400, "Bad Request", servers[0]->config);
     }
 }
 
@@ -562,6 +849,18 @@ void Server::cleanup() {
     clients.clear();
 }
 
+void Server::handleOptionsRequest(Client* client) {
+    std::string response = "HTTP/1.1 200 OK\r\n";
+    response += "Access-Control-Allow-Origin: *\r\n";
+    response += "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n";
+    response += "Access-Control-Allow-Headers: Content-Type, Content-Length\r\n";
+    response += "Content-Length: 0\r\n\r\n";
+    
+    send(client->fd, response.c_str(), response.size(), 0);
+}
+
+
+
 // Helper methods
 void Server::addPollFD(int fd, short events) {
     pollfd pfd;
@@ -587,4 +886,3 @@ void Server::setPollEvents(size_t index, short events) {
         poll_fds[index].events = events;
     }
 }
-

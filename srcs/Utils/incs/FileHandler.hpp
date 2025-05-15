@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <dirent.h>  // Add this for directory operations
 #include <cstring>   // For strcmp
+#include <limits.h>
+#include <stdlib.h>
 
 class FileHandler {
 public:
@@ -31,6 +33,10 @@ public:
     static std::string sanitizePath(const std::string& path);
 
     // In FileHandler.hpp
+
+
+
+
 static std::string normalizePath(const std::string& path) {
     std::string result;
     std::vector<std::string> parts;
@@ -60,5 +66,6 @@ static std::string normalizePath(const std::string& path) {
 };
 
     bool writeBinaryFile(const std::string& path, const std::string& data);
+std::string getAbsolutePath(const std::string& relativePath);
 
 #endif

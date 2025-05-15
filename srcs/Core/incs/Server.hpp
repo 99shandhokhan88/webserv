@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/09 00:03:42 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 19:23:23 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,13 +58,13 @@ private:
     void handleGetRequest(Client* client);
     void handlePostRequest(Client* client);
     void handleDeleteRequest(Client* client);
+    void handleOptionsRequest(Client* client);
     
     // File and directory operations
     void sendFileResponse(Client* client, const std::string& path);
     void handleDirectoryListing(Client* client, const std::string& path);
     bool isCgiRequest(const LocationConfig& location, const std::string& path) const;
     void parseMultipartBody(const std::string& body, const std::string& boundary, const std::string& uploadDir);
-    
     // Helpers for poll functionality
     static void addPollFD(int fd, short events);
     static void removePollFD(int fd);
@@ -98,7 +98,13 @@ public:
     // Add these static methods as part of the class declaration
     static void processRequest(Client* client);
     static void removeClient(int client_fd);
-    static void sendErrorResponse(Client* client, int statusCode, const std::string& message);
+    static void sendErrorResponse(Client* client, int statusCode, const std::string& message, const ServerConfig& config);
+void parseFormUrlEncoded(const std::string& body, std::map<std::string, std::string>& formData);
+
+
 };
+
+
+size_t getContentLength(const std::string& headers);
 
 #endif

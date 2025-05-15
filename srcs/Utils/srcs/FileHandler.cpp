@@ -22,6 +22,8 @@ std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
     return files;
 }
 
+
+
 bool FileHandler::createDirectory(const std::string& path) {
     // Try to create directory first
     if (mkdir(path.c_str(), 0755) == 0) return true;
@@ -139,9 +141,58 @@ std::string FileHandler::sanitizePath(const std::string& path) {
 }
 
 
-bool writeBinaryFile(const std::string& path, const std::string& data) {
+bool writeBinaryFile(const std::string& path, const std::string& content) {
+    // Ensure directory exists
+    std::string dir = path.substr(0, path.find_last_of('/'));
+    if (!FileHandler::createDirectory(dir)) {
+        std::cerr << "Failed to create directory: " << dir << std::endl;
+        return false;
+    }
+    
+    // Open file in binary mode
     std::ofstream file(path.c_str(), std::ios::binary);
-    if (!file) return false;
-    file.write(data.c_str(), data.size());
-    return file.good();
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << path << std::endl;
+        return false;
+    }
+    
+    // Write content
+    file.write(content.c_str(), content.size());
+    bool success = file.good();
+    file.close();
+    
+    std::cout << "File written: " << path << " (size: " << content.size() << " bytes)" << std::endl;
+    return success;
+}
+
+
+
+std::string getAbsolutePath(const std::string& relativePath) {
+    char resolvedPath[PATH_MAX];
+    
+    // First normalize the path by removing . and .. components
+    std::string normalizedPath = FileHandler::sanitizePath(relativePath);
+    
+    // If it's already an absolute path, return it
+    if (!normalizedPath.empty() && normalizedPath[0] == '/') {
+        return normalizedPath;
+    }
+    
+    // Get the current working directory
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        std::cerr << "Failed to get current working directory" << std::endl;
+        return normalizedPath; // Return as is if we can't get CWD
+    }
+    
+    // Build absolute path
+    std::string absolutePath = std::string(cwd) + "/" + normalizedPath;
+    
+    // Resolve the absolute path
+    if (realpath(absolutePath.c_str(), resolvedPath) == NULL) {
+        std::cerr << "Failed to resolve path: " << absolutePath << std::endl;
+        return absolutePath; // Return unresolved absolute path
+    }
+    
+    return std::string(resolvedPath);
 }

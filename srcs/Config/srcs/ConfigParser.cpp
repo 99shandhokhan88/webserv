@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 23:50:10 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 19:17:34 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/13 19:52:05 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,8 +74,19 @@ void ConfigParser::parseServerBlock(std::ifstream& file)
         if (line.empty())
             continue;
 
-        if (line.find("location") != std::string::npos) {
-            parseLocationBlock(file, server);
+if (line.find("location") != std::string::npos) {
+            // Extract location path from line
+            std::istringstream iss(line);
+            std::string keyword, path;
+            iss >> keyword >> path;  // Get "location" and path
+            
+            // Remove any trailing '{' from path
+            size_t brace_pos = path.find('{');
+            if (brace_pos != std::string::npos) {
+                path = path.substr(0, brace_pos);
+            }
+            
+            parseLocationBlock(file, server, path);  // Pass path to parser
         }
         else if (line == "}") {
             break;
@@ -88,41 +99,25 @@ void ConfigParser::parseServerBlock(std::ifstream& file)
 }
 
 // Parse a location block for a server
-void ConfigParser::parseLocationBlock(std::ifstream& file, ServerConfig& server)
-{
-    
-    LocationConfig location;    // Create a new location configuration object
+void ConfigParser::parseLocationBlock(std::ifstream& file, 
+                                    ServerConfig& server,
+                                    const std::string& path) {
+    LocationConfig location;
+    location.setPath(path);  // Now using the passed path parameter
 
-    std::string line;   // Variable to store each line of the file
+    std::string line;
+    while (std::getline(file, line)) {
+        line = line.substr(0, line.find('#'));
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
 
-    // Read each line of the file
-    while   (std::getline(file, line))
-    {
-        
-        line = line.substr(0, line.find('#'));  // Remove comments
-        
-        line.erase(0, line.find_first_not_of(" \t\r\n"));   // Remove leading whitespace
-        
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);   // Remove trailing whitespace
-        
+        if (line.empty()) continue;
 
-        if (line.empty())   // If the line is empty, skip it
-            continue    ;   // Skip to the next line
-
-
-        if (line == "}")   // If the line contains the closing bracket
-        {
-            break   ;   // Exit the loop
-        }
-        else
-        {
-            parseDirective(line, location); // Parse the directive
-        }
+        if (line == "}") break;
         
+        parseDirective(line, location);
     }
-
-    server.addLocation(location);    // Add the location configuration to the server
-    
+    server.addLocation(location);
 }
 
 

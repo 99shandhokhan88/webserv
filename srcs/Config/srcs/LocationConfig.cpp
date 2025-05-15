@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/13 12:46:31 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/07 20:59:40 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/13 19:46:15 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,8 +25,18 @@ const std::set<std::string>& LocationConfig::getCgiExtensions() const {
 LocationConfig::~LocationConfig() { }
 
 // Setters
-void LocationConfig::setPath(const std::string& p) { 
-    path = p; 
+void LocationConfig::setPath(const std::string& p) {
+    // Add leading slash if missing
+    if (p.empty() || p[0] != '/') {
+        path = "/" + p;
+    } else {
+        path = p;
+    }
+    
+    // Remove trailing slash unless it's root
+    if (path.size() > 1 && path[path.size()-1] == '/') {
+        path.erase(path.size()-1);
+    }
 }
 
 

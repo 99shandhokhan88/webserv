@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/07 20:53:15 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 19:19:41 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,18 @@ const std::set<std::string>& ServerConfig::getCgiExtensions() const {
     return _cgi_extensions;
 }
 
+const std::vector<LocationConfig>& ServerConfig::getLocations() const {
+    return _locations;  // Assuming _locations is your member variable storing locations
+}
+
 const LocationConfig& ServerConfig::getLocationForPath(const std::string& path) const {
     std::string clean_path = path;
-    
+        std::cout << "DEBUG: Available locations:\n";
+
+    for (std::vector<LocationConfig>::const_iterator it = _locations.begin();
+         it != _locations.end(); ++it) {
+        std::cout << " - '" << it->getPath() << "'\n";
+    }
     // Normalize path
     if (clean_path.empty() || clean_path[0] != '/') {
         clean_path = "/" + clean_path;

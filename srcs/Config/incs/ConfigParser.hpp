@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 22:33:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 18:29:51 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/13 19:52:19 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,8 +45,9 @@ void parseRootDirective(std::string value);
 
                             // Helper functions
                             void parseServerBlock(std::ifstream& file); // Parse a server block
-                            void parseLocationBlock(std::ifstream& file, ServerConfig& server); // Parse a location block
-                            void parseDirective(const std::string& line, ServerConfig& server); // Parse a directive
+void parseLocationBlock(std::ifstream& file, 
+                          ServerConfig& server,
+                          const std::string& path);                             void parseDirective(const std::string& line, ServerConfig& server); // Parse a directive
                             void parseDirective(const std::string& line, LocationConfig& location); // Parse a directive
 
 };

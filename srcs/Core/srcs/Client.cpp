@@ -19,8 +19,14 @@
 #include <errno.h>
 
 
+// Updated parseRequest() method
 void Client::parseRequest() {
+    // Pass the raw request data to the parser
     request.parse(request_data.c_str(), request_data.size());
+    
+    std::cout << "Request parsed: " << request.getMethod() << " " 
+            << request.getPath() << std::endl;
+    std::cout << "Body size: " << request.getBody().size() << " bytes" << std::endl;
 }
 
 // Fix initialization order to match declaration
@@ -121,6 +127,41 @@ std::string Client::readData() {
     }
     
     return request_data;
+}
+
+
+// Check if we've received the full request based on Content-Length
+bool Client::isRequestComplete() {
+        // Use request_data instead of raw_request
+
+    size_t header_end = request_data.find("\r\n\r\n");
+    if (header_end == std::string::npos) {
+        return false; // Headers not complete yet
+    }
+    
+    // For GET and HEAD requests without body
+    std::string method_line = request_data.substr(0, request_data.find("\r\n"));
+    if (method_line.find("GET") == 0 || method_line.find("HEAD") == 0) {
+        return true;
+    }
+    
+    // Extract headers
+    std::string headers = request_data.substr(0, header_end);
+    
+    // Check Content-Length
+    size_t content_length = getContentLength(headers);
+    if (content_length == 0) {
+        return true; // No content expected
+    }
+    
+    // Check if we have the full body
+    size_t body_start = header_end + 4; // Skip \r\n\r\n
+    size_t body_received = request_data.size() - body_start;
+    
+    std::cout << "DEBUG: Content-Length: " << content_length 
+              << ", Body received: " << body_received << " bytes" << std::endl;
+              
+    return body_received >= content_length;
 }
 
 bool Client::send_pending_data() {

@@ -27,14 +27,7 @@ public:
     }
 
 
-    bool isRequestComplete() const {
-        // Check for both headers and content-length if present
-        size_t header_end = request_data.find("\r\n\r\n");
-        if (header_end == std::string::npos) return false;
-        
-        // Check for body completeness if needed
-        return true;
-    }
+    bool isRequestComplete() ;
 
     explicit Client(int client_fd = -1);
     ~Client() {};
