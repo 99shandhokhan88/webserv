@@ -49,20 +49,17 @@ public:
         return _allow_upload; 
     }
     bool getAllowDelete() const;
+
     void setAllowUpload(bool allow) { 
         _allow_upload = allow; 
         if (DEBUG) std::cout << "DEBUG: Set allow_upload to " << allow << std::endl;
     }
-    void setAllowDelete(bool value);
-    void setUploadDir(const std::string& dir) { 
-        _upload_dir = dir;
-        if (DEBUG) std::cout << "DEBUG: Set upload_dir to " << dir << std::endl;
-    }
+void setAllowDelete(bool value);
+void clearAllowedMethods();
+    void setUploadDir(const std::string& dir);  // Setter
 
-    const std::string& getUploadDir() const { 
-        if (DEBUG) std::cout << "DEBUG: Get upload_dir = " << _upload_dir << std::endl;
-        return _upload_dir; 
-    }
+
+    const std::string& getUploadDir() const;
 
     // Existing methods
     void setPath(const std::string& p);

@@ -19,6 +19,14 @@ public:
     static bool createDirectory(const std::string& path);
     
     // File operations
+
+
+    static bool exists(const std::string& path);
+    static bool isWritable(const std::string& path);
+    static bool isPathWithinRoot(const std::string& path, const std::string& root);
+
+
+
     static std::string getDirectory(const std::string& path);
 
     static std::string readFile(const std::string& path);

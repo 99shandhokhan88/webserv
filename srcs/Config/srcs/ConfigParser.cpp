@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 23:50:10 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/13 19:52:05 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 22:29:50 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -199,15 +199,30 @@ void ConfigParser::parseDirective(const std::string& line, LocationConfig& locat
         location.setIndex(index);   // Set the index file in the location configuration
         
     }
-    else if (key == "allow_methods") // If the key is "allow_methods"
-    {
-        
-        std::string method; // Variable to store the method
-        while   (iss >> method)   // Read the method
-        {
-            location.addAllowedMethod(method);   // Add the method to the allowed methods in the location configuration
+else if (key == "allow_delete") {
+    std::string value;
+    iss >> value;
+    location.setAllowDelete(value == "on");
+    std::cout << "DEBUG: Set allow_delete to " << value << std::endl;
+}
+    else if (key == "allow_methods") {
+        location.clearAllowedMethods();
+        std::string method;
+        while (iss >> method) {
+
+size_t invalid_char = method.find_first_of(";{}");
+            if (invalid_char != std::string::npos) {
+                method = method.substr(0, invalid_char);
+            }
+
+ if (!method.empty()) {
+                location.addAllowedMethod(method);
+                std::cout << "DEBUG: Metodo aggiunto: '" 
+                         << method << "' a " 
+                         << location.getPath() << std::endl;
+            }
+           
         }
-        
     }
     else if (key == "cgi_extension")    // If the key is "cgi_extension"
     {
@@ -227,6 +242,7 @@ void ConfigParser::parseDirective(const std::string& line, LocationConfig& locat
         location.setCgiPath(path);  // Set the CGI path in the location configuration
         
     }
+
 
 }
 

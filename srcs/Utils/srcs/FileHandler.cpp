@@ -196,3 +196,27 @@ std::string getAbsolutePath(const std::string& relativePath) {
     
     return std::string(resolvedPath);
 }
+
+
+
+
+
+
+
+
+bool FileHandler::exists(const std::string& path) {
+    struct stat info;
+    return stat(path.c_str(), &info) == 0;
+}
+
+bool FileHandler::isWritable(const std::string& path) {
+    return access(path.c_str(), W_OK) == 0;
+}
+
+
+bool FileHandler::isPathWithinRoot(const std::string& path, const std::string& root) {
+    std::string absPath = getAbsolutePath(path);
+    std::string absRoot = getAbsolutePath(root);
+    
+    return absPath.find(absRoot) == 0;
+}

@@ -6,12 +6,13 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/15 19:19:41 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 22:33:40 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerConfig.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
+#include "../../Config/incs/LocationConfig.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -177,8 +178,8 @@ std::cout << "DEBUG: Set allow_upload to " << value << std::endl;        }
  if (!dir.empty() && dir[dir.length()-1] == ';') {
                 dir.erase(dir.length()-1);
             }            
-            location.setUploadDir(dir);
-        }
+location.setUploadDir(dir);    
+    }
         else if (key == "root") {
             std::string root;
             iss >> root;
@@ -193,7 +194,18 @@ std::cout << "DEBUG: Set allow_upload to " << value << std::endl;        }
             iss >> cgi_p;
 
             location.setCgiPath(cgi_p);
-        } else if (key == "allow_methods") {
+        }
+        
+        else if (key == "allow_delete") {
+    std::string value;
+    iss >> value;
+    location.setAllowDelete(value == "on");
+    std::cout << "DEBUG: Set allow_delete to " << value << std::endl;
+}
+        
+        
+        
+        else if (key == "allow_methods") {
             std::string method;
             while (iss >> method) {
                 location.addAllowedMethod(method);
@@ -235,10 +247,12 @@ void ServerConfig::addLocation(const LocationConfig& location) {
 }
 
 void ServerConfig::setRoot(const std::string& root) {
-    if (!root.empty() && root[root.size()-1] != '/') {
-        this->root = root + "/";
-    } else {
-        this->root = root;
+    // Store root as absolute path
+    this->root = getAbsolutePath(root);
+    
+    // Ensure trailing slash
+    if (!this->root.empty() && this->root[this->root.size()-1] != '/') {
+        this->root += "/";
     }
 }
 
