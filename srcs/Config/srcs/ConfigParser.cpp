@@ -86,7 +86,24 @@ if (line.find("location") != std::string::npos) {
                 path = path.substr(0, brace_pos);
             }
             
+            std::cout << "DEBUG: Parsing location block for path: '" << path << "'" << std::endl;
             parseLocationBlock(file, server, path);  // Pass path to parser
+            
+            // Dopo aver aggiunto la location, verifichiamo se è /cgi-bin/
+            if (path == "/cgi-bin/" || path == "/cgi-bin") {
+                const std::vector<LocationConfig>& locations = server.getLocations();
+                for (std::vector<LocationConfig>::const_iterator it = locations.begin(); it != locations.end(); ++it) {
+                    if (it->getPath() == "/cgi-bin") {
+                        std::cout << "DEBUG: Checking /cgi-bin location after parsing" << std::endl;
+                        const std::map<std::string, std::string>& cgiMap = it->getCgiInterpreters();
+                        std::cout << "DEBUG: CGI interpreters in location: " << cgiMap.size() << std::endl;
+                        for (std::map<std::string, std::string>::const_iterator cgi_it = cgiMap.begin(); cgi_it != cgiMap.end(); ++cgi_it) {
+                            std::cout << "DEBUG: Found interpreter: '" << cgi_it->first << "' -> '" << cgi_it->second << "'" << std::endl;
+                        }
+                        break;
+                    }
+                }
+            }
         }
         else if (line == "}") {
             break;
@@ -104,6 +121,22 @@ void ConfigParser::parseLocationBlock(std::ifstream& file,
                                     const std::string& path) {
     LocationConfig location;
     location.setPath(path);  // Now using the passed path parameter
+    std::cout << "DEBUG: Started parsing location block for path '" << path << "'" << std::endl;
+
+    // Aggiungiamo manualmente gli interpreti CGI per il path /cgi-bin/
+    if (path == "/cgi-bin/" || path == "/cgi-bin") {
+        std::cout << "DEBUG: Manually adding CGI interpreters for /cgi-bin/ location" << std::endl;
+        location.addCgiInterpreter(".py", "/usr/bin/python3");
+        location.addCgiInterpreter(".sh", "/bin/bash");
+        location.addCgiInterpreter(".cgi", "/usr/bin/env");
+        
+        // Verifichiamo che siano stati aggiunti
+        const std::map<std::string, std::string>& cgiMap = location.getCgiInterpreters();
+        std::cout << "DEBUG: Added " << cgiMap.size() << " CGI interpreters manually" << std::endl;
+        for (std::map<std::string, std::string>::const_iterator it = cgiMap.begin(); it != cgiMap.end(); ++it) {
+            std::cout << "DEBUG: Manual CGI interpreter: '" << it->first << "' -> '" << it->second << "'" << std::endl;
+        }
+    }
 
     std::string line;
     while (std::getline(file, line)) {
@@ -115,9 +148,23 @@ void ConfigParser::parseLocationBlock(std::ifstream& file,
 
         if (line == "}") break;
         
+        // Debug per vedere ogni linea analizzata
+        std::cout << "DEBUG: Parsing directive in location '" << path << "': '" << line << "'" << std::endl;
+        
+        // Usiamo il normale parseDirective per tutte le direttive
         parseDirective(line, location);
     }
+    
+    // Verifichiamo gli interpreti configurati
+    std::cout << "DEBUG: Finished parsing location block for path '" << path << "'" << std::endl;
+    const std::map<std::string, std::string>& cgiMap = location.getCgiInterpreters();
+    std::cout << "DEBUG: Number of CGI interpreters configured: " << cgiMap.size() << std::endl;
+    for (std::map<std::string, std::string>::const_iterator it = cgiMap.begin(); it != cgiMap.end(); ++it) {
+        std::cout << "DEBUG: CGI interpreter in location: '" << it->first << "' -> '" << it->second << "'" << std::endl;
+    }
+    
     server.addLocation(location);
+    std::cout << "DEBUG: Added location to server config" << std::endl;
 }
 
 
@@ -226,13 +273,38 @@ size_t invalid_char = method.find_first_of(";{}");
     }
     else if (key == "cgi_extension")    // If the key is "cgi_extension"
     {
+        std::string extension, interpreter;
+        iss >> extension >> interpreter;
+        std::cout << "DEBUG: Raw cgi_extension directive: extension='" << extension << "', interpreter='" << interpreter << "'" << std::endl;
         
-        std::string extension;  // Variable to store the CGI extension
-        iss >> extension;   // Read the CGI extension
-        location.setCgiExtension(extension);  
-        //std::cout << extension;
-         // Set the CGI extension in the location configuration
-        
+        if (!extension.empty() && !interpreter.empty()) {
+            // Rimuove eventuali punti e virgola alla fine
+            if (!interpreter.empty() && interpreter[interpreter.size()-1] == ';') {
+                std::cout << "DEBUG: Removing semicolon from interpreter" << std::endl;
+                interpreter.erase(interpreter.size()-1, 1);
+            }
+            
+            // Stampiamo dettagli aggiuntivi per il debug
+            std::cout << "DEBUG: Adding CGI interpreter: '" << extension << "' -> '" << interpreter << "'" << std::endl;
+            location.addCgiInterpreter(extension, interpreter);
+            
+            // Verifichiamo immediatamente che sia stato aggiunto
+            std::string interpreter_check = location.getCgiInterpreter(extension);
+            if (interpreter_check == interpreter) {
+                std::cout << "DEBUG: Verification successful - interpreter was added correctly" << std::endl;
+            } else {
+                std::cout << "DEBUG: ERROR - Interpreter was not added correctly. Got: '" << interpreter_check << "'" << std::endl;
+            }
+            
+            // Mostriamo il contenuto aggiornato della mappa
+            const std::map<std::string, std::string>& cgiMap = location.getCgiInterpreters();
+            std::cout << "DEBUG: CGI Interpreters map now contains " << cgiMap.size() << " entries" << std::endl;
+            for (std::map<std::string, std::string>::const_iterator it = cgiMap.begin(); it != cgiMap.end(); ++it) {
+                std::cout << "DEBUG: Map entry: '" << it->first << "' -> '" << it->second << "'" << std::endl;
+            }
+        } else {
+            std::cout << "DEBUG: Invalid CGI extension configuration. Extension: '" << extension << "', Interpreter: '" << interpreter << "'" << std::endl;
+        }
     }
     else if (key == "cgi_path") // If the key is "cgi_path"
     {

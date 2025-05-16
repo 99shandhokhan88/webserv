@@ -74,13 +74,22 @@ void CGIExecutor::setupEnvironment() {
 
 // In CGIExecutor::createExecArgs()
 char** CGIExecutor::createExecArgs() const {
-    char** args = new char*[3];
-    const std::string script_path = getScriptPath(); // Use validated path
+    const std::string script_path = getScriptPath();
+    size_t dot_pos = script_path.find_last_of('.');
+    std::string ext = (dot_pos != std::string::npos) ? script_path.substr(dot_pos) : "";
     
-    args[0] = strdup(_location.getCgiPath().c_str());
+    std::string interpreter = _location.getCgiInterpreter(ext);
+    if (interpreter.empty()) {
+        throw std::runtime_error("No CGI interpreter configured for extension: " + ext);
+    }
+    
+    std::cerr << "DEBUG: Setting up CGI for extension: " << ext << " with interpreter: " << interpreter << std::endl;
+    
+    // Configurazione per diversi tipi di script
+    char** args = new char*[3];
+    args[0] = strdup(interpreter.c_str());
     args[1] = strdup(script_path.c_str());
     args[2] = NULL;
-    
     return args;
 }
 
@@ -157,9 +166,10 @@ std::string CGIExecutor::execute() {
             throw std::runtime_error("Failed to create CGI arguments");
         }
 
-        std::cerr << "Created CGI arguments:\n"
-                  << "args[0]: " << (args[0] ? args[0] : "NULL") << "\n"
-                  << "args[1]: " << (args[1] ? args[1] : "NULL") << "\n";
+        std::cerr << "Created CGI arguments:\n";
+        for (int i = 0; args[i] != NULL; i++) {
+            std::cerr << "args[" << i << "]: " << (args[i] ? args[i] : "NULL") << "\n";
+        }
 
         int pipe_in[2], pipe_out[2];
         if (pipe(pipe_in) == -1 || pipe(pipe_out) == -1) {
@@ -181,25 +191,35 @@ std::string CGIExecutor::execute() {
                 close(pipe_out[0]);
 
                 if (dup2(pipe_in[0], STDIN_FILENO) == -1) {
+                    std::cerr << "Child process: dup2 failed for stdin: " << strerror(errno) << std::endl;
                     throw std::runtime_error("dup2 failed for stdin");
                 }
                 if (dup2(pipe_out[1], STDOUT_FILENO) == -1) {
+                    std::cerr << "Child process: dup2 failed for stdout: " << strerror(errno) << std::endl;
                     throw std::runtime_error("dup2 failed for stdout");
                 }
 
                 // Change to script directory
                 std::string script_dir = extractDirectory(script_path);
                 if (chdir(script_dir.c_str()) == -1) {
+                    std::cerr << "Child process: Failed to change directory to: " << script_dir << " - " << strerror(errno) << std::endl;
                     throw std::runtime_error("Failed to change directory to: " + script_dir);
                 }
                 
+                std::cerr << "Child process: About to execute CGI with:\n";
+                std::cerr << "  Interpreter: " << args[0] << std::endl;
+                std::cerr << "  Script: " << args[1] << std::endl;
+                
                 execve(args[0], args, _env);
-                throw std::runtime_error("Execve failed: " + std::string(strerror(errno)));
+                
+                // If we get here, execve has failed
+                std::cerr << "Child process: execve failed: " << strerror(errno) << std::endl;
+                _exit(1);
             } catch (const std::exception& e) {
-                std::cerr << "CGI child process error: " << e.what() << std::endl;
-                exit(EXIT_FAILURE);
+                std::cerr << "Child process exception: " << e.what() << std::endl;
+                _exit(1);
             }
-        } 
+        }
 
         // Parent process
         close(pipe_in[0]); 
@@ -264,36 +284,41 @@ std::string CGIExecutor::execute() {
         int status;
         waitpid(pid, &status, 0);
 
-        if (WIFEXITED(status)) {
-            int exit_status = WEXITSTATUS(status);
-            if (exit_status != 0) {
-                throw std::runtime_error("CGI script exited with status " + toString(exit_status));
-            }
-        } else if (WIFSIGNALED(status)) {
-            throw std::runtime_error("CGI script terminated by signal " + toString(WTERMSIG(status)));
+        // --- PARSING CGI OUTPUT ---
+        std::cout << "DEBUG: CGI raw output size: " << output.size() << " bytes." << std::endl;
+        if (output.size() > 0) {
+            std::cout << "DEBUG: First 100 chars: " << output.substr(0, std::min(output.size(), size_t(100))) << std::endl;
         }
-
-        // Process CGI output
-        size_t header_end = output.find("\r\n\r\n");
-        if (header_end == std::string::npos) {
-            // No headers found, assume it's all body
-            return "Content-Type: text/html\r\n\r\n" + output;
-        }
-
-        // Extract headers and body
-        std::string headers = output.substr(0, header_end);
-        std::string body = output.substr(header_end + 4);
-
-        // Check if Content-Type is already present in headers
-        bool hasContentType = (headers.find("Content-Type:") != std::string::npos);
         
-        // Build final response
-        std::string response = "";
-        if (!hasContentType) {
-            response += "Content-Type: text/html\r\n";
+        // Split headers and body
+        size_t header_end = output.find("\r\n\r\n");
+        if (header_end == std::string::npos)
+            header_end = output.find("\n\n");
+            
+        std::cout << "DEBUG: Header end position: " << header_end << std::endl;
+        
+        std::string headers, body;
+        if (header_end != std::string::npos) {
+            headers = output.substr(0, header_end);
+            body = output.substr(header_end + ((output[header_end] == '\r') ? 4 : 2));
+            std::cout << "DEBUG: Headers size: " << headers.size() << ", Body size: " << body.size() << std::endl;
+        } else {
+            // No headers, treat all as body
+            body = output;
+            std::cout << "DEBUG: No headers found, all content is body. Size: " << body.size() << std::endl;
         }
-        response += headers + "\r\n\r\n" + body;
-
+        // Compose HTTP response
+        std::string response = "HTTP/1.1 200 OK\r\n";
+        if (!headers.empty()) {
+            response += headers + "\r\n\r\n";
+        } else {
+            response += "Content-Type: text/html\r\n\r\n";
+        }
+        response += body;
+        
+        std::cout << "DEBUG: Final response size: " << response.size() << " bytes." << std::endl;
+        std::cout << "DEBUG: First 100 chars: " << response.substr(0, std::min(response.size(), size_t(100))) << std::endl;
+        
         return response;
 
     } catch (const std::exception& e) {

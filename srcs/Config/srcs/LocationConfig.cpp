@@ -120,3 +120,32 @@ const std::vector<std::string>& LocationConfig::getAllowedMethods() const {
 const std::string& LocationConfig::getIndex() const { 
     return index; 
 }
+
+void LocationConfig::addCgiInterpreter(const std::string& ext, const std::string& interpreter) {
+    std::cout << "DEBUG: LocationConfig::addCgiInterpreter - Adding: '" << ext << "' -> '" << interpreter << "'" << std::endl;
+    _cgiInterpreters[ext] = interpreter;
+    
+    // Verifichiamo che sia stato inserito correttamente
+    std::map<std::string, std::string>::const_iterator it = _cgiInterpreters.find(ext);
+    if (it != _cgiInterpreters.end()) {
+        std::cout << "DEBUG: Successfully added CGI interpreter: '" << it->first << "' -> '" << it->second << "'" << std::endl;
+    } else {
+        std::cout << "DEBUG: ERROR - Failed to add CGI interpreter for '" << ext << "'" << std::endl;
+    }
+}
+
+std::string LocationConfig::getCgiInterpreter(const std::string& ext) const {
+    std::cout << "DEBUG: LocationConfig::getCgiInterpreter - Looking for: '" << ext << "'" << std::endl;
+    std::map<std::string, std::string>::const_iterator it = _cgiInterpreters.find(ext);
+    if (it != _cgiInterpreters.end()) {
+        std::cout << "DEBUG: Found interpreter: '" << it->second << "'" << std::endl;
+        return it->second;
+    }
+    std::cout << "DEBUG: No interpreter found for extension: '" << ext << "'" << std::endl;
+    return std::string();
+}
+
+const std::map<std::string, std::string>& LocationConfig::getCgiInterpreters() const {
+    std::cout << "DEBUG: LocationConfig::getCgiInterpreters - Map size: " << _cgiInterpreters.size() << std::endl;
+    return _cgiInterpreters;
+}

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <map>
 
 class LocationConfig {
 private:
@@ -21,6 +22,7 @@ private:
     bool _allow_delete;
     std::set<std::string> _allowed_mime_types;
     std::string _upload_dir;
+    std::map<std::string, std::string> _cgiInterpreters;
       static const bool DEBUG = true;
 
 
@@ -38,7 +40,8 @@ public:
         _auto_index(false),
         _allow_upload(false),
         _allow_delete(false),
-        _allowed_mime_types()
+        _allowed_mime_types(),
+        _cgiInterpreters()
     {}
     
     ~LocationConfig();
@@ -85,6 +88,15 @@ void clearAllowedMethods();
     bool isMimeTypeAllowed(const std::string& mime_type) const;
     void setAutoIndex(bool value);
     void addAllowedMimeType(const std::string& mime_type);
+
+    void addCgiInterpreter(const std::string& ext, const std::string& interpreter);
+    std::string getCgiInterpreter(const std::string& ext) const;
+    const std::map<std::string, std::string>& getCgiInterpreters() const;
+    
+    // Verifica se un'estensione è configurata come CGI
+    bool isCGIExtension(const std::string& ext) const {
+        return _cgiInterpreters.find(ext) != _cgiInterpreters.end();
+    }
 };
 
 #endif

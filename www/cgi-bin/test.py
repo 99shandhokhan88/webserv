@@ -9,11 +9,12 @@ from datetime import datetime
 from urllib.parse import parse_qs
 
 def send_error(message):
-    print("Content-Type: text/html\r\n")
+    print("Content-Type: text/html; charset=UTF-8\r\n")
     print("""<!DOCTYPE html>
 <html>
 <head>
     <title>CGI Error</title>
+    <meta charset="UTF-8">
     <style>
         :root {
             --primary-color: #2196F3;
@@ -84,7 +85,7 @@ def send_error(message):
     sys.exit(0)
 
 try:
-    print("Content-Type: text/html\r\n")
+    print("Content-Type: text/html; charset=UTF-8\r\n")
     print("""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -256,7 +257,7 @@ try:
     # System Information Section
     print("""
         <div class="card">
-            <h2>🖥️ System Information</h2>
+            <h2>💻 System Information</h2>
             <div class="info-grid">""")
     print(f"""
                 <div class="stat-box">

@@ -244,19 +244,41 @@ void Server::handleDirectoryListing(Client* client, const std::string& path) {
 }
 
 bool Server::isCgiRequest(const LocationConfig& location, const std::string& path) const {
-    // Silence the unused parameter warning
-    (void)location;
+    std::cout << "DEBUG: Checking if '" << path << "' is a CGI request" << std::endl;
+    std::cout << "DEBUG: Location path: '" << location.getPath() << "'" << std::endl;
     
-    if (path.find("/cgi-bin/") == 0) {
-        return true;
-    }
-
     size_t dot_pos = path.find_last_of('.');
     if (dot_pos != std::string::npos) {
         std::string ext = path.substr(dot_pos);
-        return (ext == ".py");
+        std::cout << "DEBUG: File extension: '" << ext << "'" << std::endl;
+        
+        const std::map<std::string, std::string>& cgiMap = location.getCgiInterpreters();
+        std::cout << "DEBUG: CGI Interpreters map size: " << cgiMap.size() << std::endl;
+        
+        for (std::map<std::string, std::string>::const_iterator it = cgiMap.begin(); it != cgiMap.end(); ++it) {
+            std::cout << "DEBUG: CGI Map entry: '" << it->first << "' -> '" << it->second << "'" << std::endl;
+        }
+        
+        if (cgiMap.find(ext) != cgiMap.end()) {
+            std::cout << "DEBUG: Extension '" << ext << "' found in CGI interpreters map" << std::endl;
+            
+            // Verifica la condizione path.find(location.getPath())
+            bool pathMatches = path.find(location.getPath()) == 0;
+            std::cout << "DEBUG: Path match condition: " << pathMatches 
+                     << " (path.find('" << location.getPath() << "') == " 
+                     << path.find(location.getPath()) << ")" << std::endl;
+            
+            // Verifica aggiuntiva: il path deve iniziare con il path della location CGI
+            if (pathMatches) {
+                std::cout << "DEBUG: CGI request confirmed for " << path << " with extension " << ext << std::endl;
+                return true;
+            }
+        } else {
+            std::cout << "DEBUG: Extension '" << ext << "' NOT found in CGI interpreters map" << std::endl;
+        }
+    } else {
+        std::cout << "DEBUG: No file extension found in path" << std::endl;
     }
-
     return false;
 }
 
@@ -264,6 +286,10 @@ void Server::handleGetRequest(Client* client) {
     try {
         const LocationConfig& location = config.getLocationForPath(client->request.getPath());
         std::string path = config.getFullPath(client->request.getPath());
+        
+        std::cout << "DEBUG: Handling GET request for " << client->request.getPath() << std::endl;
+        std::cout << "DEBUG: Location path: " << location.getPath() << std::endl;
+        std::cout << "DEBUG: Full file path: " << path << std::endl;
 
         // Handle root path redirect
         if (client->request.getPath() == "/") {
@@ -277,20 +303,79 @@ void Server::handleGetRequest(Client* client) {
             return;
         }
 
-        // Handle CGI requests
-        if (isCgiRequest(location, client->request.getPath())) {
-            try {
-                CGIExecutor cgi(client->request, location);
-                std::string output = cgi.execute();
-                if (output.empty()) {
-                    throw std::runtime_error("CGI execution failed");
+        // Verifica speciale per script in /cgi-bin/
+        if (client->request.getPath().find("/cgi-bin/") == 0) {
+            std::cout << "DEBUG: Special handling for /cgi-bin/ path" << std::endl;
+            
+            // Verifica estensione
+            size_t dot_pos = path.find_last_of('.');
+            if (dot_pos != std::string::npos) {
+                std::string ext = path.substr(dot_pos);
+                std::cout << "DEBUG: File extension: " << ext << std::endl;
+                
+                // SOLUZIONE DIRETTA: Invece di controllare la mappa, eseguiamo direttamente 
+                // gli script in base all'estensione
+                std::string interpreter = "";
+                if (ext == ".py") {
+                    interpreter = "/usr/bin/python3";
+                    std::cout << "DEBUG: Using hardcoded Python interpreter: " << interpreter << std::endl;
+                } else if (ext == ".sh") {
+                    interpreter = "/bin/bash";
+                    std::cout << "DEBUG: Using hardcoded Bash interpreter: " << interpreter << std::endl;
+                } else if (ext == ".cgi") {
+                    interpreter = "/usr/bin/env";
+                    std::cout << "DEBUG: Using hardcoded Env interpreter: " << interpreter << std::endl;
+                } else if (ext == ".php") {
+                    interpreter = "/usr/bin/php";
+                    std::cout << "DEBUG: Using hardcoded PHP interpreter: " << interpreter << std::endl;
+                } else if (ext == ".ts") {
+                    interpreter = "/home/vzashev/.nvm/versions/node/v16.20.2/bin/ts-node";
+                    std::cout << "DEBUG: Using hardcoded TypeScript interpreter: " << interpreter << std::endl;
                 }
-                sendResponse(client, 200, output);
-            } catch (const std::exception& e) {
-                std::cerr << "CGI Error: " << e.what() << std::endl;
-                sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
+                
+                if (!interpreter.empty()) {
+                    try {
+                        std::cout << "DEBUG: Executing CGI script: " << path << std::endl;
+                        
+                        // Verifica che il file esista ed abbia permessi di esecuzione
+                        if (!FileHandler::fileExists(path)) {
+                            std::cerr << "CGI Error: File not found: " << path << std::endl;
+                            sendErrorResponse(client, 404, "CGI Script Not Found", servers[0]->config);
+                            return;
+                        }
+                        
+                        // Imposta permessi di esecuzione se necessario
+                        if (!FileHandler::isExecutable(path)) {
+                            std::cout << "DEBUG: Setting executable permissions for " << path << std::endl;
+                            chmod(path.c_str(), 0755);
+                        }
+                        
+                        // Aggiungiamo manualmente l'interprete alla location
+                        LocationConfig modifiedLocation = location;
+                        modifiedLocation.addCgiInterpreter(ext, interpreter);
+                        
+                        // Verifichiamo che sia stato aggiunto
+                        std::cout << "DEBUG: Manually added interpreter: " << ext << " -> " << interpreter << std::endl;
+                        const std::map<std::string, std::string>& cgiMap = modifiedLocation.getCgiInterpreters();
+                        std::cout << "DEBUG: Modified location CGI map size: " << cgiMap.size() << std::endl;
+                        
+                        CGIExecutor cgi(client->request, modifiedLocation);
+                        std::string output = cgi.execute();
+                        if (output.empty()) {
+                            throw std::runtime_error("CGI execution failed");
+                        }
+                        std::cout << "DEBUG: CGI execution successful, output size: " << output.size() << std::endl;
+                        send(client->fd, output.c_str(), output.size(), 0);
+                        return;
+                    } catch (const std::exception& e) {
+                        std::cerr << "CGI Error: " << e.what() << std::endl;
+                        sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
+                        return;
+                    }
+                } else {
+                    std::cout << "DEBUG: Extension " << ext << " not supported for CGI" << std::endl;
+                }
             }
-            return;
         }
 
         // Handle directory requests
@@ -790,36 +875,61 @@ void Server::handleRequest(const Request& request, Response& response) {
 }
 
 void Server::processRequest(Client* client) {
-    if (client->request.getMethod() == "OPTIONS") {
-        servers[0]->handleOptionsRequest(client);
-        return;
-    }
     try {
-        const Request& req = client->request;
+        std::cout << "Processing " << client->request.getMethod() << " request for: " << client->request.getPath() << std::endl;
         
-        // Validate request components
-        if (req.getMethod().empty() || req.getPath().empty()) {
-            throw std::runtime_error("Invalid request structure");
+        // Debug delle location disponibili
+        std::cout << "DEBUG: Available locations:" << std::endl;
+        if (!servers.empty()) {
+            const std::vector<LocationConfig>& locations = servers[0]->config.getLocations();
+            for (std::vector<LocationConfig>::const_iterator it = locations.begin(); it != locations.end(); ++it) {
+                std::cout << " - '" << it->getPath() << "'" << std::endl;
+                
+                // Per la location /cgi-bin/, mostra gli interpreti
+                if (it->getPath() == "/cgi-bin") {
+                    const std::map<std::string, std::string>& cgiMap = it->getCgiInterpreters();
+                    std::cout << "   CGI interpreters: " << cgiMap.size() << std::endl;
+                    for (std::map<std::string, std::string>::const_iterator cgi_it = cgiMap.begin(); cgi_it != cgiMap.end(); ++cgi_it) {
+                        std::cout << "   - '" << cgi_it->first << "' -> '" << cgi_it->second << "'" << std::endl;
+                    }
+                }
+            }
         }
 
-        std::string method = req.getMethod();
-        std::cout << "Processing " << method << " request for: " 
-                << req.getPath() << std::endl;
-
-        // Find a server instance to handle the request
-        // In this case we'll use the first server in the list
-        if (!servers.empty()) {
-            if (method == "GET") {
-                servers[0]->handleGetRequest(client);
-            } else if (method == "POST") {
-                servers[0]->handlePostRequest(client);
-            } else if (method == "DELETE") {
-                servers[0]->handleDeleteRequest(client);
-            } else {
-                Server::sendErrorResponse(client, 501, "Not Implemented", servers[0]->config); 
+        if (client->request.getMethod() == "OPTIONS") {
+            servers[0]->handleOptionsRequest(client);
+            return;
+        }
+        try {
+            const Request& req = client->request;
+            
+            // Validate request components
+            if (req.getMethod().empty() || req.getPath().empty()) {
+                throw std::runtime_error("Invalid request structure");
             }
-        } else {
-            throw std::runtime_error("No server available to handle request");
+
+            std::string method = req.getMethod();
+            std::cout << "Processing " << method << " request for: " 
+                    << req.getPath() << std::endl;
+
+            // Find a server instance to handle the request
+            // In this case we'll use the first server in the list
+            if (!servers.empty()) {
+                if (method == "GET") {
+                    servers[0]->handleGetRequest(client);
+                } else if (method == "POST") {
+                    servers[0]->handlePostRequest(client);
+                } else if (method == "DELETE") {
+                    servers[0]->handleDeleteRequest(client);
+                } else {
+                    Server::sendErrorResponse(client, 501, "Not Implemented", servers[0]->config); 
+                }
+            } else {
+                throw std::runtime_error("No server available to handle request");
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Request error: " << e.what() << std::endl;
+            Server::sendErrorResponse(client, 400, "Bad Request", servers[0]->config);
         }
     } catch (const std::exception& e) {
         std::cerr << "Request error: " << e.what() << std::endl;
