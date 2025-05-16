@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webserver Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            color: #1a1a1a;
+            margin: 0;
+            margin-bottom: 10px;
+        }
+        
+        .button-container {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .button {
+            display: block;
+            padding: 20px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        
+        .get { background: #4CAF50; }
+        .post { background: #2196F3; }
+        .delete { background: #f44336; }
+        .cgi { background: #9C27B0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Webserver Test Suite</h1>
+            <p>Choose a request method or test CGI implementations</p>
+        </header>
+        
+        <div class="button-container">
+            <button onclick="testGet()" class="button get">GET Request</button>
+            <button onclick="testPost()" class="button post">POST Request</button>
+            <button onclick="testDelete()" class="button delete">DELETE Request</button>
+            <a href="/cgi.html" class="button cgi">CGI Tests</a>
+        </div>
+    </div>
+
+    <script>
+        function testGet() {
+            const testParam = prompt('Enter test parameter:', 'test');
+            if (testParam) {
+                window.location.href = `/test?param=${encodeURIComponent(testParam)}`;
+            }
+        }
+
+        function testPost() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/test';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'test_data';
+            input.value = 'Testing POST request';
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function testDelete() {
+            fetch('/test', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                alert('DELETE request sent successfully');
+            });
+        }
+    </script>
+</body>
+</html> 

@@ -4,116 +4,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webserv - Home</title>
-    
-    <!-- Link to the stylesheet -->
-    <link rel="stylesheet" href="/css/style.css">      
-    
-    <!-- Preconnect for external resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Link to Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
-    
-    <!-- Link to Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Link to the favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <title>Webserv Test Suite</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <header>
-        <h1>Welcome to Webserv!</h1>
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="test.html">Test Page</a></li>
-                <li><a href="cgi-bin/test.py">CGI Test</a></li>
-                <li><a href="errors/404.html">Trigger 404</a></li>
-                <li><a href="file-manager.html">File Manager</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <section>
-            <h2>About Webserv</h2>
-            <p>This is a custom web server built from scratch. It supports static files, CGI scripts, and custom error pages.</p>
-        </section>
-        <section>
-            <h2>Features</h2>
-            <ul>
-                <li>Static file serving</li>
-                <li>CGI support (Python, PHP, etc.)</li>
-                <li>Custom error pages</li>
-                <li>File uploads</li>
-                <li>HTTP Methods: GET, POST, DELETE</li>
-            </ul>
-        </section>
-        <section>
-            <h2>Test HTTP Methods</h2>
+    <div class="container">
+        <header>
+            <h1>Webserv Test Suite</h1>
+            <p class="subtitle">A comprehensive testing environment for our HTTP server implementation</p>
+        </header>
+
+        <div class="card-grid">
+            <!-- POST Tests -->
             <div class="card">
-                <h3>GET Method</h3>
-                <p>Get a resource from the server:</p>
-                <ul>
-                    <li><a href="index.html">Get this page</a></li>
-                    <li><a href="test.html">Get test page</a></li>
-                    <li><a href="cgi-bin/test.py">Get CGI response</a></li>
+                <div class="card-icon">
+                    <i class="fas fa-paper-plane"></i>
+                </div>
+                <h2>POST Method Tests</h2>
+                <p>Test different types of POST requests</p>
+                <ul class="feature-list">
+                    <li>Google-style Form</li>
+                    <li>Simple Message Post</li>
+                    <li>File Upload</li>
                 </ul>
+                <a href="/post_tests.html" class="button button-primary">Run POST Tests</a>
             </div>
-            
+
+            <!-- GET Tests -->
             <div class="card">
-                <h3>POST Method</h3>
-                <p>Create a new resource on the server:</p>
-                <form action="/uploads/test-file.txt" method="POST" enctype="text/plain">
-                    <textarea name="textcontent">Hello from venelin!</textarea>
-                    <button type="submit">Create File</button>
-                </form>
+                <div class="card-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <h2>GET Method Tests</h2>
+                <p>Test various GET request scenarios</p>
+                <ul class="feature-list">
+                    <li>Static Files</li>
+                    <li>Query Parameters</li>
+                    <li>Directory Listing</li>
+                </ul>
+                <a href="/get_tests.html" class="button button-secondary">Run GET Tests</a>
             </div>
-            
+
+            <!-- DELETE Tests -->
             <div class="card">
-                <h3>DELETE Method</h3>
-                <p>Remove a resource from the server:</p>
-                <form id="delete-form" onsubmit="return submitDelete(event)">
-                    <label for="delete-path">Path to delete:</label>
-                    <input type="text" id="delete-path" value="uploads/test-file.txt" required>
-                    <button type="submit">Delete Resource</button>
-                </form>
-                <div id="delete-result"></div>
+                <div class="card-icon">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h2>DELETE Method Tests</h2>
+                <p>Test file deletion functionality</p>
+                <ul class="feature-list">
+                    <li>File Deletion</li>
+                    <li>Error Handling</li>
+                    <li>Permission Tests</li>
+                </ul>
+                <a href="/delete_tests.html" class="button button-accent">Run DELETE Tests</a>
             </div>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2025 Webserv. All rights reserved.</p>
-    </footer>
-    
-    <script>
-        // Function to handle DELETE requests since HTML forms don't support DELETE natively
-        function submitDelete(event) {
-            event.preventDefault();
-            const path = document.getElementById('delete-path').value;
-            const resultDiv = document.getElementById('delete-result');
-            
-            // Create a new XMLHttpRequest
-            const xhr = new XMLHttpRequest();
-            xhr.open('DELETE', path, true);
-            
-            xhr.onload = function() {
-                if (this.status >= 200 && this.status < 300) {
-                    resultDiv.innerHTML = '<p class="success">Resource deleted successfully!</p>';
-                } else {
-                    resultDiv.innerHTML = '<p class="error">Error: ' + this.status + ' ' + this.statusText + '</p>';
-                }
-            };
-            
-            xhr.onerror = function() {
-                resultDiv.innerHTML = '<p class="error">Request failed</p>';
-            };
-            
-            xhr.send();
-            return false;
-        }
-    </script>
+        </div>
+
+        <!-- CGI Tests Section -->
+        <div class="card">
+            <div class="card-icon">
+                <i class="fas fa-code"></i>
+            </div>
+            <h2>CGI Script Tests</h2>
+            <p>Test CGI script execution in different languages</p>
+            <div class="cgi-grid">
+                <div class="cgi-item">
+                    <h3><i class="fab fa-python"></i> Python CGI</h3>
+                    <p>Form handling and file uploads</p>
+                    <a href="/cgi-bin/test.py" class="button button-primary">Test Python CGI</a>
+                </div>
+                <div class="cgi-item">
+                    <h3><i class="fas fa-terminal"></i> Shell Script</h3>
+                    <p>System information and environment</p>
+                    <a href="/cgi-bin/test.sh" class="button button-secondary">Test Shell CGI</a>
+                </div>
+                <div class="cgi-item">
+                    <h3><i class="fas fa-plus-square"></i> C++ CGI</h3>
+                    <p>Request processing and headers</p>
+                    <a href="/cgi-bin/test.cgi" class="button button-accent">Test C++ CGI</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Tools -->
+        <div class="card">
+            <h2>Test Resources</h2>
+            <p>Additional testing tools and resources</p>
+            <ul class="feature-list">
+                <li>File Upload Interface</li>
+                <li>Directory Browser</li>
+                <li>Error Pages</li>
+            </ul>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/uploads/" class="button button-primary">Browse Files</a>
+                <a href="/errors/404.html" class="button button-secondary">Test 404</a>
+                <a href="/errors/500.html" class="button button-accent">Test 500</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>Webserv Project - HTTP/1.1 Server Implementation</p>
+        </footer>
+    </div>
+
+    <style>
+    .cgi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    .cgi-item {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .cgi-item h3 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+    .cgi-item i {
+        margin-right: 0.5rem;
+    }
+    </style>
 </body>
 </html>
 

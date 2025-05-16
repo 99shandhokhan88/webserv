@@ -187,19 +187,60 @@ void Server::sendFileResponse(Client* client, const std::string& path) {
 }
 
 void Server::handleDirectoryListing(Client* client, const std::string& path) {
-    std::vector<std::string> files = FileHandler::listDirectory(path);
-    std::string content = "<html><body><h1>Directory Listing</h1><ul>";
+    try {
+        std::vector<std::string> files = FileHandler::listDirectory(path);
+        std::stringstream html;
+        
+        html << "<!DOCTYPE html>\n<html>\n<head>\n"
+             << "<title>Directory Listing</title>\n"
+             << "<style>\n"
+             << "body { font-family: Arial, sans-serif; margin: 20px; }\n"
+             << "h1 { color: #333; }\n"
+             << ".file-list { list-style: none; padding: 0; }\n"
+             << ".file-list li { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }\n"
+             << ".file-list a { color: #007bff; text-decoration: none; }\n"
+             << ".file-list a:hover { text-decoration: underline; }\n"
+             << "</style>\n"
+             << "</head>\n<body>\n"
+             << "<h1>Directory Listing for " << client->request.getPath() << "</h1>\n"
+             << "<ul class='file-list'>\n";
 
-    // C++98 compatible for-loop
-    for (std::vector<std::string>::const_iterator file = files.begin(); file != files.end(); ++file) {
-        content += "<li><a href=\"" + *file + "\">" + *file + "</a>";
-        content += " <form style=\"display:inline\" action=\"" + *file + "\" method=\"POST\">";
-        content += "<input type=\"hidden\" name=\"_method\" value=\"DELETE\">";
-        content += "<button type=\"submit\">Delete</button></form></li>";
+        // Add parent directory link if not in root
+        if (client->request.getPath() != "/") {
+            html << "<li><a href=\"../\">Parent Directory</a></li>\n";
+        }
+
+        // Add files and directories
+        for (size_t i = 0; i < files.size(); ++i) {
+            std::string fullPath = path + "/" + files[i];
+            std::string displayPath = client->request.getPath() + 
+                                    (client->request.getPath().empty() ? "/" : 
+                                     (client->request.getPath()[client->request.getPath().length() - 1] == '/' ? "" : "/")) + 
+                                    files[i];
+            
+            if (FileHandler::isDirectory(fullPath)) {
+                displayPath += "/";
+                html << "<li><a href=\"" << displayPath << "\">[DIR] " << files[i] << "/</a></li>\n";
+            } else {
+                html << "<li><a href=\"" << displayPath << "\">" << files[i] << "</a></li>\n";
+            }
+        }
+
+        html << "</ul>\n</body>\n</html>";
+
+        std::string content = html.str();
+        std::string response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Type: text/html\r\n";
+        response += "Content-Length: " + toString(content.size()) + "\r\n";
+        response += "\r\n";
+        response += content;
+
+        send(client->fd, response.c_str(), response.size(), 0);
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error generating directory listing: " << e.what() << std::endl;
+        sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
     }
-
-    content += "</ul></body></html>";
-    sendResponse(client, 200, content);
 }
 
 bool Server::isCgiRequest(const LocationConfig& location, const std::string& path) const {
@@ -224,13 +265,35 @@ void Server::handleGetRequest(Client* client) {
         const LocationConfig& location = config.getLocationForPath(client->request.getPath());
         std::string path = config.getFullPath(client->request.getPath());
 
-        if (isCgiRequest(location, client->request.getPath())) {
-            CGIExecutor cgi(client->request, location);
-            std::string output = cgi.execute();
-            sendResponse(client, 200, output);
+        // Handle root path redirect
+        if (client->request.getPath() == "/") {
+            std::string redirectUrl = "/index.html";
+            std::string redirectContent = "<html><body>Redirecting to <a href=\"" + redirectUrl + "\">" + redirectUrl + "</a></body></html>";
+            std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
+            response += "Location: " + redirectUrl + "\r\n";
+            response += "Content-Length: " + toString(redirectContent.size()) + "\r\n";
+            response += "\r\n" + redirectContent;
+            send(client->fd, response.c_str(), response.size(), 0);
             return;
         }
 
+        // Handle CGI requests
+        if (isCgiRequest(location, client->request.getPath())) {
+            try {
+                CGIExecutor cgi(client->request, location);
+                std::string output = cgi.execute();
+                if (output.empty()) {
+                    throw std::runtime_error("CGI execution failed");
+                }
+                sendResponse(client, 200, output);
+            } catch (const std::exception& e) {
+                std::cerr << "CGI Error: " << e.what() << std::endl;
+                sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
+            }
+            return;
+        }
+
+        // Handle directory requests
         if (FileHandler::isDirectory(path)) {
             if (!path.empty() && path[path.size() - 1] != '/') {
                 std::string redirectUrl = client->request.getPath() + "/";
@@ -243,12 +306,14 @@ void Server::handleGetRequest(Client* client) {
                 return;
             }
 
+            // Try to serve index file
             std::string indexPath = path + location.getIndex();
             if (FileHandler::fileExists(indexPath)) {
                 sendFileResponse(client, indexPath);
                 return;
             }
 
+            // Handle directory listing
             if (location.getAutoIndex()) {
                 handleDirectoryListing(client, path);
             } else {
@@ -257,12 +322,35 @@ void Server::handleGetRequest(Client* client) {
             return;
         }
 
+        // Handle file requests
         if (!FileHandler::fileExists(path)) {
             sendErrorResponse(client, 404, "Not Found", servers[0]->config);
             return;
         }
 
-        sendFileResponse(client, path);
+        // Get file extension and set appropriate content type
+        std::string extension = path.substr(path.find_last_of(".") + 1);
+        std::string contentType = "text/plain";
+        
+        if (extension == "html" || extension == "htm") contentType = "text/html";
+        else if (extension == "css") contentType = "text/css";
+        else if (extension == "js") contentType = "application/javascript";
+        else if (extension == "jpg" || extension == "jpeg") contentType = "image/jpeg";
+        else if (extension == "png") contentType = "image/png";
+        else if (extension == "gif") contentType = "image/gif";
+        else if (extension == "txt") contentType = "text/plain";
+        else if (extension == "pdf") contentType = "application/pdf";
+
+        // Read and send file with appropriate content type
+        std::string fileContent = FileHandler::readFile(path);
+        std::string response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Type: " + contentType + "\r\n";
+        response += "Content-Length: " + toString(fileContent.size()) + "\r\n";
+        response += "\r\n";
+        response += fileContent;
+        
+        send(client->fd, response.c_str(), response.size(), 0);
+
     } catch (const std::exception& e) {
         std::cerr << "Error handling GET request: " << e.what() << std::endl;
         sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
@@ -622,10 +710,10 @@ void Server::handleDeleteRequest(Client* client) {
     try {
         const LocationConfig& location = config.getLocationForPath(client->request.getPath());
         std::cout << "=== DEBUG DELETE ===" << "\n"
-                 << "Percorso richiesto: " << client->request.getPath() << "\n"
-                 << "Location matchata: " << location.getPath() << "\n"
+                 << "Requested path: " << client->request.getPath() << "\n"
+                 << "Matched location: " << location.getPath() << "\n"
                  << "Allow Delete: " << location.getAllowDelete() << "\n"
-                 << "Metodi permessi: ";
+                 << "Allowed methods: ";
 
         const std::vector<std::string>& methods = location.getAllowedMethods();
         for (size_t i=0; i<methods.size(); ++i) {
@@ -633,7 +721,13 @@ void Server::handleDeleteRequest(Client* client) {
         }
         std::cout << "\n====================\n";
 
-        // Corrected line: use client->request.getPath() instead of requestPath
+        // Check if DELETE is allowed for this location
+        if (!location.getAllowDelete()) {
+            sendErrorResponse(client, 403, "DELETE method not allowed for this location", config);
+            return;
+        }
+
+        // Get the full path of the file to delete
         std::string resolvedPath = config.getFullPath(client->request.getPath());
 
         // Debug information
@@ -650,7 +744,31 @@ void Server::handleDeleteRequest(Client* client) {
             return;
         }
 
-        // ... rest of the code remains the same ...
+        // Check if the file exists
+        if (!FileHandler::exists(resolvedPath)) {
+            sendErrorResponse(client, 404, "File not found", config);
+            return;
+        }
+
+        // Try to delete the file
+        bool success;
+        if (FileHandler::isDirectory(resolvedPath)) {
+            success = FileHandler::deleteDirectory(resolvedPath);
+        } else {
+            success = FileHandler::deleteFile(resolvedPath);
+        }
+
+        if (success) {
+            // Send success response
+            std::string response = "HTTP/1.1 200 OK\r\n";
+            response += "Content-Type: text/plain\r\n";
+            response += "Content-Length: 7\r\n";
+            response += "\r\n";
+            response += "Deleted";
+            send(client->fd, response.c_str(), response.length(), 0);
+        } else {
+            sendErrorResponse(client, 500, "Failed to delete file", config);
+        }
     } catch (const std::exception& e) {
         std::cerr << "DELETE Error: " << e.what() << std::endl;
         sendErrorResponse(client, 500, "Internal Server Error", config);

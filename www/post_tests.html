@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POST Method Tests - Webserv</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .test-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .debug-output {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { color: var(--secondary-color); }
+        .error { color: var(--accent-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>POST Method Tests</h1>
+            <p class="subtitle">Test different types of POST requests</p>
+            <a href="/index.html" class="button button-primary">Back to Home</a>
+        </header>
+
+        <!-- Google-style Form -->
+        <div class="test-form">
+            <h2>Google-style Form Test</h2>
+            <form action="/cgi-bin/test.py" method="POST" id="google-form">
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="message">Message:</label>
+                    <textarea id="message" name="message" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="button button-primary">Submit Form</button>
+            </form>
+            <div id="google-form-result" class="debug-output"></div>
+        </div>
+
+        <!-- Simple Message Post -->
+        <div class="test-form">
+            <h2>Quick Message Test</h2>
+            <form action="/cgi-bin/test.py" method="POST" id="quick-message">
+                <div class="form-group">
+                    <label for="quick-text">Message:</label>
+                    <input type="text" id="quick-text" name="message" value="Hello Venelin!" required>
+                </div>
+                <button type="submit" class="button button-secondary">Send Message</button>
+            </form>
+            <div id="quick-message-result" class="debug-output"></div>
+        </div>
+
+        <!-- File Upload Form -->
+        <div class="test-form">
+            <h2>File Upload Test</h2>
+            <form action="/cgi-bin/test.py" method="POST" enctype="multipart/form-data" id="file-upload">
+                <div class="form-group">
+                    <label for="file">Select File:</label>
+                    <input type="file" id="file" name="file" required>
+                </div>
+                <button type="submit" class="button button-accent">Upload File</button>
+            </form>
+            <div id="file-upload-result" class="debug-output"></div>
+        </div>
+
+        <script>
+            // Helper function to handle form submissions
+            function handleForm(formId, resultId) {
+                document.getElementById(formId).addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const form = e.target;
+                    const result = document.getElementById(resultId);
+                    
+                    try {
+                        const formData = new FormData(form);
+                        const isFileUpload = form.getAttribute('enctype') === 'multipart/form-data';
+                        
+                        let requestBody;
+                        let headers = {};
+                        
+                        if (isFileUpload) {
+                            requestBody = formData;
+                        } else {
+                            // Convert form data to URL-encoded format for regular forms
+                            const params = new URLSearchParams();
+                            for (const [key, value] of formData) {
+                                params.append(key, value);
+                            }
+                            requestBody = params.toString();
+                            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                        }
+                        
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: headers,
+                            body: requestBody
+                        });
+                        
+                        const text = await response.text();
+                        result.innerHTML = `<div class="${response.ok ? 'success' : 'error'}">Status: ${response.status} ${response.statusText}</div>
+<div>Response Headers:</div>
+${Array.from(response.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+<div>Response Body:</div>
+${text}`;
+                    } catch (error) {
+                        result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                    }
+                });
+            }
+
+            // Set up form handlers
+            handleForm('google-form', 'google-form-result');
+            handleForm('quick-message', 'quick-message-result');
+            handleForm('file-upload', 'file-upload-result');
+        </script>
+    </div>
+</body>
+</html> 

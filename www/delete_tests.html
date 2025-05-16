@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELETE Method Tests - Webserv</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .test-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+        .file-list {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .debug-output {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { color: var(--secondary-color); }
+        .error { color: var(--accent-color); }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DELETE Method Tests</h1>
+            <p class="subtitle">Test file deletion functionality</p>
+            <a href="/index.html" class="button button-primary">Back to Home</a>
+        </header>
+
+        <!-- Create Test File Section -->
+        <div class="test-section">
+            <h2>Create Test File</h2>
+            <p>Create a file to test deletion</p>
+            <form id="create-file-form">
+                <div class="form-group">
+                    <label for="file-content">File Content:</label>
+                    <input type="text" id="file-content" value="This is a test file" required>
+                </div>
+                <button type="submit" class="button button-primary">Create Test File</button>
+            </form>
+            <div id="create-result" class="debug-output"></div>
+        </div>
+
+        <!-- Delete File Section -->
+        <div class="test-section">
+            <h2>Delete File Test</h2>
+            <p>Test deleting files from the uploads directory</p>
+            <div class="file-list" id="file-list">
+                Loading files...
+            </div>
+            <div id="delete-result" class="debug-output"></div>
+        </div>
+
+        <!-- Manual Delete Test -->
+        <div class="test-section">
+            <h2>Manual Delete Test</h2>
+            <p>Test deletion with a specific path</p>
+            <form id="manual-delete-form">
+                <div class="form-group">
+                    <label for="delete-path">Path to Delete:</label>
+                    <input type="text" id="delete-path" value="/uploads/test.txt" required>
+                </div>
+                <button type="submit" class="button button-accent">Delete File</button>
+            </form>
+            <div id="manual-delete-result" class="debug-output"></div>
+        </div>
+
+        <script>
+            // Function to refresh file list
+            async function refreshFileList() {
+                try {
+                    const response = await fetch('/uploads/');
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const files = Array.from(doc.querySelectorAll('a'))
+                        .filter(a => !a.href.endsWith('/'))
+                        .map(a => a.textContent);
+
+                    const fileList = document.getElementById('file-list');
+                    if (files.length === 0) {
+                        fileList.innerHTML = '<p>No files found</p>';
+                        return;
+                    }
+
+                    fileList.innerHTML = files.map(file => `
+                        <div class="file-item">
+                            <span>${file}</span>
+                            <button onclick="deleteFile('/uploads/${file}')" class="button button-accent">Delete</button>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    document.getElementById('file-list').innerHTML = `<p class="error">Error loading files: ${error.message}</p>`;
+                }
+            }
+
+            // Function to delete a file
+            async function deleteFile(path) {
+                const result = document.getElementById('delete-result');
+                try {
+                    const response = await fetch(path, { method: 'DELETE' });
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<div>Response:</div>
+${text}`;
+                    refreshFileList();
+                } catch (error) {
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            }
+
+            // Handle create file form
+            document.getElementById('create-file-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const content = document.getElementById('file-content').value;
+                const result = document.getElementById('create-result');
+                
+                try {
+                    const response = await fetch('/uploads/test.txt', {
+                        method: 'POST',
+                        body: content
+                    });
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">File created successfully</div>
+<div>Status: ${response.status} ${response.statusText}</div>
+<div>Response:</div>
+${text}`;
+                    refreshFileList();
+                } catch (error) {
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            });
+
+            // Handle manual delete form
+            document.getElementById('manual-delete-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const path = document.getElementById('delete-path').value;
+                const result = document.getElementById('manual-delete-result');
+                
+                try {
+                    const response = await fetch(path, { method: 'DELETE' });
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<div>Response:</div>
+${text}`;
+                    refreshFileList();
+                } catch (error) {
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            });
+
+            // Initial file list load
+            refreshFileList();
+        </script>
+    </div>
+</body>
+</html> 

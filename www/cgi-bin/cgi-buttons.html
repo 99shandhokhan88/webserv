@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGI Request Methods</title>
+    <style>
+        :root {
+            --python-color: #2196F3;
+            --shell-color: #FF5722;
+            --php-color: #9C27B0;
+            --cpp-color: #00BCD4;
+            --ts-color: #3178c6;
+            --get-color: #4CAF50;
+            --post-color: #2196F3;
+            --delete-color: #f44336;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        .home-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            color: #1a1a1a;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        
+        .home-button:hover {
+            opacity: 0.9;
+        }
+        
+        .cgi-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .cgi-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid;
+        }
+        
+        .python .cgi-title { border-color: var(--python-color); }
+        .shell .cgi-title { border-color: var(--shell-color); }
+        .php .cgi-title { border-color: var(--php-color); }
+        .cpp .cgi-title { border-color: var(--cpp-color); }
+        .typescript .cgi-title { border-color: var(--ts-color); }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .request-button {
+            padding: 15px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .request-button:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        
+        .get-button { background: var(--get-color); }
+        .post-button { background: var(--post-color); }
+        .delete-button { background: var(--delete-color); }
+        
+        .description {
+            margin: 10px 0;
+            color: #666;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CGI Request Methods</h1>
+            <p>Test different request methods for each CGI implementation</p>
+            <a href="/cgi-bin/index.html" class="home-button">Return to Home</a>
+        </header>
+
+        <div class="cgi-section python">
+            <div class="cgi-title">Python CGI</div>
+            <div class="description">Test Python CGI implementation with different request methods</div>
+            <div class="button-group">
+                <a href="/cgi-bin/test.py" class="request-button get-button">GET Request</a>
+                <a href="#" onclick="submitPost('test.py')" class="request-button post-button">POST Request</a>
+                <a href="#" onclick="submitDelete('test.py')" class="request-button delete-button">DELETE Request</a>
+            </div>
+        </div>
+
+        <div class="cgi-section shell">
+            <div class="cgi-title">Shell CGI</div>
+            <div class="description">Test Shell script CGI with different request methods</div>
+            <div class="button-group">
+                <a href="/cgi-bin/test.sh" class="request-button get-button">GET Request</a>
+                <a href="#" onclick="submitPost('test.sh')" class="request-button post-button">POST Request</a>
+                <a href="#" onclick="submitDelete('test.sh')" class="request-button delete-button">DELETE Request</a>
+            </div>
+        </div>
+
+        <div class="cgi-section php">
+            <div class="cgi-title">PHP CGI</div>
+            <div class="description">Test PHP CGI implementation with different request methods</div>
+            <div class="button-group">
+                <a href="/cgi-bin/test.php" class="request-button get-button">GET Request</a>
+                <a href="#" onclick="submitPost('test.php')" class="request-button post-button">POST Request</a>
+                <a href="#" onclick="submitDelete('test.php')" class="request-button delete-button">DELETE Request</a>
+            </div>
+        </div>
+
+        <div class="cgi-section cpp">
+            <div class="cgi-title">C++ CGI</div>
+            <div class="description">Test C++ CGI implementation with different request methods</div>
+            <div class="button-group">
+                <a href="/cgi-bin/test.cgi" class="request-button get-button">GET Request</a>
+                <a href="#" onclick="submitPost('test.cgi')" class="request-button post-button">POST Request</a>
+                <a href="#" onclick="submitDelete('test.cgi')" class="request-button delete-button">DELETE Request</a>
+            </div>
+        </div>
+
+        <div class="cgi-section typescript">
+            <div class="cgi-title">TypeScript CGI</div>
+            <div class="description">Test TypeScript CGI implementation with different request methods</div>
+            <div class="button-group">
+                <a href="/cgi-bin/test.ts" class="request-button get-button">GET Request</a>
+                <a href="#" onclick="submitPost('test.ts')" class="request-button post-button">POST Request</a>
+                <a href="#" onclick="submitDelete('test.ts')" class="request-button delete-button">DELETE Request</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>Choose a CGI implementation and request method to test</p>
+        </footer>
+    </div>
+
+    <script>
+        function submitPost(script) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/cgi-bin/${script}`;
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'test_data';
+            input.value = 'Testing POST request';
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function submitDelete(script) {
+            fetch(`/cgi-bin/${script}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                window.location.href = `/cgi-bin/${script}`;
+            });
+        }
+    </script>
+</body>
+</html> 

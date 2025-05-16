@@ -158,60 +158,82 @@ void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::stri
 
     std::string line;
     while (std::getline(configFile, line)) {
-
+        // Remove leading and trailing whitespace
         line.erase(0, line.find_first_not_of(" \t"));
         line.erase(line.find_last_not_of(" \t") + 1);
         
-         if (line.empty() || line[0] == '#') continue;
+        if (line.empty() || line[0] == '#') continue;
+        
         std::istringstream iss(line);
         std::string key;
         iss >> key;
+
         if (key == "allow_upload") {
             std::string value;
             iss >> value;
+            // Remove any trailing semicolon
+            if (!value.empty() && value[value.length()-1] == ';') {
+                value.erase(value.length()-1);
+            }
             location.setAllowUpload(value == "on");
-
-std::cout << "DEBUG: Set allow_upload to " << value << std::endl;        } 
+            std::cout << "DEBUG: Set allow_upload to " << value << std::endl;
+        } 
         else if (key == "upload_dir") {
             std::string dir;
             iss >> dir;
- if (!dir.empty() && dir[dir.length()-1] == ';') {
+            if (!dir.empty() && dir[dir.length()-1] == ';') {
                 dir.erase(dir.length()-1);
             }            
-location.setUploadDir(dir);    
-    }
+            location.setUploadDir(dir);    
+        }
         else if (key == "root") {
             std::string root;
             iss >> root;
+            if (!root.empty() && root[root.length()-1] == ';') {
+                root.erase(root.length()-1);
+            }
             location.setRoot(root);
-        } else if (key == "cgi_extension") {
+        }
+        else if (key == "cgi_extension") {
             std::string cgi_ext;
             iss >> cgi_ext;
+            if (!cgi_ext.empty() && cgi_ext[cgi_ext.length()-1] == ';') {
+                cgi_ext.erase(cgi_ext.length()-1);
+            }
             location.setCgiExtension(cgi_ext);
-            
-        } else if (key == "cgi_path") {
+        }
+        else if (key == "cgi_path") {
             std::string cgi_p;
             iss >> cgi_p;
-
+            if (!cgi_p.empty() && cgi_p[cgi_p.length()-1] == ';') {
+                cgi_p.erase(cgi_p.length()-1);
+            }
             location.setCgiPath(cgi_p);
         }
-        
         else if (key == "allow_delete") {
-    std::string value;
-    iss >> value;
-    location.setAllowDelete(value == "on");
-    std::cout << "DEBUG: Set allow_delete to " << value << std::endl;
-}
-        
-        
-        
+            std::string value;
+            iss >> value;
+            // Remove any trailing semicolon
+            if (!value.empty() && value[value.length()-1] == ';') {
+                value.erase(value.length()-1);
+            }
+            std::cout << "DEBUG: Processing allow_delete with value: '" << value << "'" << std::endl;
+            location.setAllowDelete(value == "on");
+            std::cout << "DEBUG: Set allow_delete to " << (value == "on") << std::endl;
+        }
         else if (key == "allow_methods") {
             std::string method;
             while (iss >> method) {
-                location.addAllowedMethod(method);
+                if (!method.empty() && method[method.length()-1] == ';') {
+                    method.erase(method.length()-1);
+                }
+                if (!method.empty()) {
+                    location.addAllowedMethod(method);
+                }
             }
-        } else if (key == "}") {
-            break; // End of location block
+        }
+        else if (key == "}") {
+            break;
         }
     }
 

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GET Method Tests - Webserv</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .test-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .debug-output {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { color: var(--secondary-color); }
+        .error { color: var(--accent-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GET Method Tests</h1>
+            <p class="subtitle">Test various GET request scenarios</p>
+            <a href="/index.html" class="button button-primary">Back to Home</a>
+        </header>
+
+        <!-- Static Files Test -->
+        <div class="test-section">
+            <h2>Static Files Test</h2>
+            <p>Test retrieving different types of static files</p>
+            <div class="test-grid">
+                <button onclick="testFile('/css/styles.css')" class="button button-primary">Test CSS File</button>
+                <button onclick="testFile('/index.html')" class="button button-secondary">Test HTML File</button>
+                <button onclick="testFile('/test.txt')" class="button button-accent">Test Text File</button>
+            </div>
+            <div id="static-file-result" class="debug-output"></div>
+        </div>
+
+        <!-- Query Parameters Test -->
+        <div class="test-section">
+            <h2>Query Parameters Test</h2>
+            <p>Test GET requests with different query parameters</p>
+            <div class="test-grid">
+                <button onclick="testQueryParams('name=Venelin')" class="button button-primary">
+                    Simple Parameter
+                </button>
+                <button onclick="testQueryParams('name=Venelin&action=test')" class="button button-secondary">
+                    Multiple Parameters
+                </button>
+                <button onclick="testQueryParams('special=' + encodeURIComponent('!@#$%'))" class="button button-accent">
+                    Special Characters
+                </button>
+            </div>
+            <div id="query-params-result" class="debug-output"></div>
+        </div>
+
+        <!-- Directory Listing Test -->
+        <div class="test-section">
+            <h2>Directory Listing Test</h2>
+            <p>Test autoindex functionality for different directories</p>
+            <div class="test-grid">
+                <button onclick="testDirectoryListing('/uploads/')" class="button button-primary">Uploads Directory</button>
+                <button onclick="testDirectoryListing('/cgi-bin/')" class="button button-secondary">CGI Directory</button>
+                <button onclick="testDirectoryListing('/css/')" class="button button-accent">CSS Directory</button>
+            </div>
+            <div id="directory-result" class="debug-output"></div>
+        </div>
+
+        <!-- Error Cases Test -->
+        <div class="test-section">
+            <h2>Error Cases Test</h2>
+            <p>Test various error scenarios</p>
+            <div class="test-grid">
+                <button onclick="testErrorCase('/nonexistent.html')" class="button button-primary">404 Not Found</button>
+                <button onclick="testErrorCase('/forbidden/')" class="button button-secondary">403 Forbidden</button>
+                <button onclick="testErrorCase('/cgi-bin/invalid.py')" class="button button-accent">500 Server Error</button>
+            </div>
+            <div id="error-result" class="debug-output"></div>
+        </div>
+
+        <script>
+            async function makeRequest(url, options = {}) {
+                try {
+                    const response = await fetch(url, options);
+                    let body;
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        body = await response.json();
+                    } else {
+                        body = await response.text();
+                    }
+
+                    return {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: Object.fromEntries(response.headers),
+                        body: body,
+                        ok: response.ok
+                    };
+                } catch (error) {
+                    return {
+                        error: error.message,
+                        ok: false
+                    };
+                }
+            }
+
+            async function testFile(path) {
+                const result = document.getElementById('static-file-result');
+                const response = await makeRequest(path);
+                
+                result.innerHTML = response.ok 
+                    ? `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<div>Headers:</div>
+${Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}`
+                    : `<div class="error">Error: ${response.error || `Status: ${response.status} ${response.statusText}`}</div>`;
+            }
+
+            async function testQueryParams(queryString) {
+                const result = document.getElementById('query-params-result');
+                const response = await makeRequest(`/cgi-bin/test.py?${queryString}`);
+                
+                result.innerHTML = response.ok
+                    ? `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<div>Query Parameters:</div>
+${queryString}
+<div>Response:</div>
+${typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)}`
+                    : `<div class="error">Error: ${response.error || `Status: ${response.status} ${response.statusText}`}</div>`;
+            }
+
+            async function testDirectoryListing(path) {
+                const result = document.getElementById('directory-result');
+                const response = await makeRequest(path);
+                
+                result.innerHTML = response.ok
+                    ? `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<div>Directory Listing for ${path}:</div>
+${response.body}`
+                    : `<div class="error">Error: ${response.error || `Status: ${response.status} ${response.statusText}`}</div>`;
+            }
+
+            async function testErrorCase(path) {
+                const result = document.getElementById('error-result');
+                const response = await makeRequest(path);
+                
+                result.innerHTML = `<div class="${response.status >= 400 ? 'error' : 'success'}">
+Status: ${response.status} ${response.statusText}
+</div>
+<div>Headers:</div>
+${response.headers ? Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join('\n') : 'No headers'}
+<div>Response:</div>
+${typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)}`;
+            }
+        </script>
+    </div>
+</body>
+</html> 
