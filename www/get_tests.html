@@ -29,6 +29,94 @@
         }
         .success { color: var(--secondary-color); }
         .error { color: var(--accent-color); }
+
+        /* Nuovi stili per la galleria di file */
+        .file-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .file-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .file-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .file-thumbnail {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .file-name {
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin-top: 0.5rem;
+        }
+        .file-preview {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .file-preview img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        .file-preview pre {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .file-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .file-preview-close {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        
+        /* Stili per il messaggio di download */
+        .download-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .download-status p.success {
+            color: #4CAF50;
+        }
+        .download-status p.error {
+            color: #f44336;
+        }
     </style>
 </head>
 <body>
@@ -38,6 +126,15 @@
             <p class="subtitle">Test various GET request scenarios</p>
             <a href="/index.html" class="button button-primary">Back to Home</a>
         </header>
+
+        <!-- Uploads Gallery NEW SECTION -->
+        <div class="test-section">
+            <h2>File Uploads Gallery</h2>
+            <p>Browse and view all uploaded files from the /uploads/ directory</p>
+            <button onclick="loadUploadsGallery()" class="button button-primary">Load Uploads Gallery</button>
+            <div id="uploads-gallery" class="file-gallery"></div>
+            <div id="file-preview" class="file-preview" style="display: none;"></div>
+        </div>
 
         <!-- Static Files Test -->
         <div class="test-section">
@@ -168,6 +265,139 @@ ${response.headers ? Object.entries(response.headers).map(([key, value]) => `${k
 <div>Response:</div>
 ${typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)}`;
             }
+
+            // Nuove funzioni per la galleria di file
+            async function loadUploadsGallery() {
+                const galleryElement = document.getElementById('uploads-gallery');
+                galleryElement.innerHTML = '<p>Caricamento file in corso...</p>';
+                
+                const response = await makeRequest('/uploads/');
+                
+                if (!response.ok) {
+                    galleryElement.innerHTML = `<p class="error">Errore nel caricamento dei file: ${response.error || response.status}</p>`;
+                    return;
+                }
+
+                // Parsing della risposta HTML per estrarre i link ai file
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(response.body, 'text/html');
+                const fileLinks = Array.from(doc.querySelectorAll('.file-list a')).filter(a => !a.textContent.includes('[DIR]'));
+                
+                if (fileLinks.length === 0) {
+                    galleryElement.innerHTML = '<p>Nessun file trovato nella directory uploads.</p>';
+                    return;
+                }
+
+                galleryElement.innerHTML = '';
+                
+                fileLinks.forEach(link => {
+                    const fileName = link.textContent;
+                    const filePath = link.getAttribute('href');
+                    const fileExtension = fileName.split('.').pop().toLowerCase();
+                    
+                    const card = document.createElement('div');
+                    card.className = 'file-card';
+                    card.onclick = () => previewFile(filePath, fileName, fileExtension);
+                    
+                    const thumbnail = document.createElement('div');
+                    thumbnail.className = 'file-thumbnail';
+                    
+                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+                        // Immagine
+                        const img = document.createElement('img');
+                        img.src = filePath;
+                        img.alt = fileName;
+                        img.style = 'max-width: 100%; max-height: 100%;';
+                        thumbnail.appendChild(img);
+                    } else if (['txt', 'html', 'css', 'js', 'json', 'md'].includes(fileExtension)) {
+                        // File di testo
+                        thumbnail.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24"><path fill="#666" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>';
+                    } else {
+                        // Altro tipo di file
+                        thumbnail.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24"><path fill="#666" d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,12L16,16H13.5V19H10.5V16H8L12,12Z"/></svg>';
+                    }
+                    
+                    const nameElement = document.createElement('div');
+                    nameElement.className = 'file-name';
+                    nameElement.textContent = fileName;
+                    
+                    card.appendChild(thumbnail);
+                    card.appendChild(nameElement);
+                    galleryElement.appendChild(card);
+                });
+            }
+
+            async function previewFile(filePath, fileName, fileExtension) {
+                const previewElement = document.getElementById('file-preview');
+                previewElement.innerHTML = '<p>Caricamento anteprima...</p>';
+                previewElement.style.display = 'block';
+                
+                const headerHTML = `<div class="file-preview-header">
+                    <h3>${fileName}</h3>
+                    <button onclick="closePreview()" class="file-preview-close">Chiudi</button>
+                </div>`;
+                
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+                    // Per le immagini, usiamo direttamente l'URL invece di fare una fetch
+                    previewElement.innerHTML = `${headerHTML}
+                        <img src="${filePath}" alt="${fileName}" style="max-width: 100%; max-height: 80vh;" />
+                        <p><button onclick="downloadFile('${filePath}', '${fileName}')" class="button button-primary">Scarica</button></p>`;
+                } else if (['txt', 'html', 'css', 'js', 'json', 'md'].includes(fileExtension)) {
+                    // Per i file di testo, facciamo una fetch normale
+                    try {
+                        const response = await fetch(filePath);
+                        if (!response.ok) {
+                            previewElement.innerHTML = `${headerHTML}<p class="error">Errore nel caricamento del file: ${response.status} ${response.statusText}</p>`;
+                            return;
+                        }
+                        const text = await response.text();
+                        previewElement.innerHTML = `${headerHTML}
+                            <pre>${text}</pre>
+                            <p><button onclick="downloadFile('${filePath}', '${fileName}')" class="button button-primary">Scarica</button></p>`;
+                    } catch (error) {
+                        previewElement.innerHTML = `${headerHTML}<p class="error">Errore nel caricamento del file: ${error.message}</p>`;
+                    }
+                } else {
+                    // Altri file
+                    previewElement.innerHTML = `${headerHTML}
+                        <p>Questo tipo di file non può essere visualizzato in anteprima.</p>
+                        <p><button onclick="downloadFile('${filePath}', '${fileName}')" class="button button-primary">Scarica</button></p>`;
+                }
+            }
+
+            // Nuova funzione per scaricare i file usando Fetch API e Blob
+            async function downloadFile(filePath, fileName) {
+                try {
+                    // Mostra un messaggio di download in corso
+                    const statusElement = document.createElement('div');
+                    statusElement.className = 'download-status';
+                    statusElement.innerHTML = '<p>Download in corso...</p>';
+                    document.body.appendChild(statusElement);
+                    
+                    // Metodo alternativo: apri l'URL in una nuova scheda o finestra
+                    // Questo bypassa i problemi di CORS e gestione blob
+                    window.open(filePath, '_blank');
+                    
+                    // Aggiorna il messaggio
+                    statusElement.innerHTML = '<p class="success">Download avviato in una nuova scheda!</p>';
+                    setTimeout(() => statusElement.remove(), 3000);
+                    
+                } catch (error) {
+                    console.error('Errore durante il download:', error);
+                    const statusElement = document.createElement('div');
+                    statusElement.className = 'download-status';
+                    statusElement.innerHTML = `<p class="error">Errore nel download: ${error.message}</p>`;
+                    document.body.appendChild(statusElement);
+                    setTimeout(() => statusElement.remove(), 3000);
+                }
+            }
+
+            function closePreview() {
+                document.getElementById('file-preview').style.display = 'none';
+            }
+
+            // Carica automaticamente la galleria all'apertura della pagina
+            document.addEventListener('DOMContentLoaded', loadUploadsGallery);
         </script>
     </div>
 </body>

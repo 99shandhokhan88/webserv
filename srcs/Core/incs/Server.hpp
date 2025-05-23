@@ -99,7 +99,9 @@ public:
     static void processRequest(Client* client);
     static void removeClient(int client_fd);
     static void sendErrorResponse(Client* client, int statusCode, const std::string& message, const ServerConfig& config);
-void parseFormUrlEncoded(const std::string& body, std::map<std::string, std::string>& formData);
+    static void sendMethodNotAllowedResponse(Client* client, const std::vector<std::string>& allowedMethods);
+    static void sendOptionsResponse(Client* client, const std::vector<std::string>& allowedMethods);
+    void parseFormUrlEncoded(const std::string& body, std::map<std::string, std::string>& formData);
 
 
 };

@@ -103,6 +103,7 @@ void Server::handleClient(int client_fd) {
             // Only try to parse and process if the request is complete
             if (client.isRequestComplete()) {
                 client.parseRequest();
+                
                 processRequest(&client);
                 if (!client.shouldKeepAlive()) {
                     removeClient(client_fd);
@@ -188,7 +189,12 @@ void Server::sendFileResponse(Client* client, const std::string& path) {
 
 void Server::handleDirectoryListing(Client* client, const std::string& path) {
     try {
+        std::string requestPath = client->request.getPath();
+        std::cout << "DEBUG: Directory listing for path: " << path << ", request path: " << requestPath << std::endl;
+        
+        // Procedi direttamente con il listing (il check del slash è già fatto in handleGetRequest)
         std::vector<std::string> files = FileHandler::listDirectory(path);
+        std::cout << "DEBUG: Found " << files.size() << " files in directory" << std::endl;
         std::stringstream html;
         
         html << "<!DOCTYPE html>\n<html>\n<head>\n"
@@ -202,21 +208,22 @@ void Server::handleDirectoryListing(Client* client, const std::string& path) {
              << ".file-list a:hover { text-decoration: underline; }\n"
              << "</style>\n"
              << "</head>\n<body>\n"
-             << "<h1>Directory Listing for " << client->request.getPath() << "</h1>\n"
+             << "<h1>Directory Listing for " << requestPath << "</h1>\n"
              << "<ul class='file-list'>\n";
 
         // Add parent directory link if not in root
-        if (client->request.getPath() != "/") {
-            html << "<li><a href=\"../\">Parent Directory</a></li>\n";
+        if (requestPath != "/") {
+            // Calcola il percorso genitore rimuovendo l'ultimo segmento
+            std::string parentPath = requestPath.substr(0, requestPath.rfind('/', requestPath.length() - 2) + 1);
+            if (parentPath.empty()) parentPath = "/";
+            
+            html << "<li><a href=\"" << parentPath << "\">[DIR] Parent Directory</a></li>\n";
         }
 
         // Add files and directories
         for (size_t i = 0; i < files.size(); ++i) {
             std::string fullPath = path + "/" + files[i];
-            std::string displayPath = client->request.getPath() + 
-                                    (client->request.getPath().empty() ? "/" : 
-                                     (client->request.getPath()[client->request.getPath().length() - 1] == '/' ? "" : "/")) + 
-                                    files[i];
+            std::string displayPath = requestPath + files[i];
             
             if (FileHandler::isDirectory(fullPath)) {
                 displayPath += "/";
@@ -284,8 +291,8 @@ bool Server::isCgiRequest(const LocationConfig& location, const std::string& pat
 
 void Server::handleGetRequest(Client* client) {
     try {
-        const LocationConfig& location = config.getLocationForPath(client->request.getPath());
-        std::string path = config.getFullPath(client->request.getPath());
+        const LocationConfig& location = servers[0]->config.getLocationForPath(client->request.getPath());
+        std::string path = servers[0]->config.getFullPath(client->request.getPath());
         
         std::cout << "DEBUG: Handling GET request for " << client->request.getPath() << std::endl;
         std::cout << "DEBUG: Location path: " << location.getPath() << std::endl;
@@ -369,7 +376,17 @@ void Server::handleGetRequest(Client* client) {
                         return;
                     } catch (const std::exception& e) {
                         std::cerr << "CGI Error: " << e.what() << std::endl;
-                        sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
+                        
+                        // Check if it's a timeout error
+                        std::string error_msg = e.what();
+                        if (error_msg.find("CGI_TIMEOUT:") == 0) {
+                            // Extract timeout message and send 504 Gateway Timeout
+                            std::string timeout_msg = error_msg.substr(12); // Remove "CGI_TIMEOUT:" prefix
+                            sendErrorResponse(client, 504, "Gateway Timeout: " + timeout_msg, servers[0]->config);
+                        } else {
+                            // Other CGI errors get 500 Internal Server Error
+                            sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
+                        }
                         return;
                     }
                 } else {
@@ -379,36 +396,83 @@ void Server::handleGetRequest(Client* client) {
         }
 
         // Handle directory requests
-        if (FileHandler::isDirectory(path)) {
-            if (!path.empty() && path[path.size() - 1] != '/') {
-                std::string redirectUrl = client->request.getPath() + "/";
-                std::string redirectContent = "<html><body>Redirecting to <a href=\"" + redirectUrl + "\">" + redirectUrl + "</a></body></html>";
-                std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
-                response += "Location: " + redirectUrl + "\r\n";
-                response += "Content-Length: " + toString(redirectContent.size()) + "\r\n";
-                response += "\r\n" + redirectContent;
-                send(client->fd, response.c_str(), response.size(), 0);
+        std::cout << "DEBUG: About to check if path is directory: '" << path << "'" << std::endl;
+        std::cout << "DEBUG: Request path was: '" << client->request.getPath() << "'" << std::endl;
+        
+        // PRIMA: controlla se il path è una directory
+        bool isDir = FileHandler::isDirectory(path);
+        std::cout << "DEBUG: isDirectory result: " << (isDir ? "true" : "false") << std::endl;
+        
+        if (isDir) {
+            std::cout << "DEBUG: Path is confirmed as directory" << std::endl;
+            
+            // Debug del controllo dello slash
+            std::string requestPath = client->request.getPath();
+            std::cout << "DEBUG: Request path: '" << requestPath << "'" << std::endl;
+            std::cout << "DEBUG: Path length: " << requestPath.size() << std::endl;
+            if (!requestPath.empty()) {
+                char lastChar = requestPath[requestPath.size() - 1];
+                std::cout << "DEBUG: Last character: '" << lastChar << "' (ASCII: " << (int)lastChar << ")" << std::endl;
+                std::cout << "DEBUG: Ends with slash? " << (lastChar == '/' ? "YES" : "NO") << std::endl;
+            }
+            
+            // Se il percorso NON termina con /, fai redirect aggiungendo /
+            if (requestPath.empty() || requestPath[requestPath.size() - 1] != '/') {
+                std::cout << "DEBUG: Path does NOT end with slash - should redirect" << std::endl;
+                
+                try {
+                    std::string redirectUrl = client->request.getPath() + "/";
+                    std::cout << "DEBUG: Redirect URL created: '" << redirectUrl << "'" << std::endl;
+                    
+                    std::string redirectContent = "<html><body>Redirecting to <a href=\"" + redirectUrl + "\">" + redirectUrl + "</a></body></html>";
+                    std::cout << "DEBUG: Redirect content created, size: " << redirectContent.size() << std::endl;
+                    
+                    std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
+                    response += "Location: " + redirectUrl + "\r\n";
+                    response += "Content-Length: " + toString(redirectContent.size()) + "\r\n";
+                    response += "\r\n" + redirectContent;
+                    std::cout << "DEBUG: Response built, size: " << response.size() << std::endl;
+                    
+                    std::cout << "DEBUG: About to send redirect response..." << std::endl;
+                    ssize_t sent = send(client->fd, response.c_str(), response.size(), 0);
+                    std::cout << "DEBUG: Sent " << sent << " bytes (expected " << response.size() << ")" << std::endl;
+                    
+                    if (sent < 0) {
+                        std::cerr << "ERROR: send() failed: " << strerror(errno) << std::endl;
+                    }
+                    
+                    std::cout << "DEBUG: Redirect completed successfully" << std::endl;
+                    return;
+                } catch (const std::exception& e) {
+                    std::cerr << "ERROR in redirect: " << e.what() << std::endl;
+                    sendErrorResponse(client, 500, "Redirect failed", servers[0]->config);
+                    return;
+                }
+            }
+            // Se il percorso termina già con /, mostra il directory listing o index
+            else {
+                std::cout << "DEBUG: Path ends with slash - should show listing or index" << std::endl;
+                // Try to serve index file
+                std::string indexPath = path + location.getIndex();
+                if (FileHandler::fileExists(indexPath)) {
+                    std::cout << "DEBUG: Index file found, serving: " << indexPath << std::endl;
+                    sendFileResponse(client, indexPath);
+                } 
+                // Se non c'è un index file e autoindex è attivo, mostra il listing
+                else if (location.getAutoIndex()) {
+                    std::cout << "DEBUG: No index file, showing directory listing (autoindex enabled)" << std::endl;
+                    handleDirectoryListing(client, path);
+                } else {
+                    std::cout << "DEBUG: No index file and autoindex disabled - sending 403" << std::endl;
+                    sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
+                }
                 return;
             }
-
-            // Try to serve index file
-            std::string indexPath = path + location.getIndex();
-            if (FileHandler::fileExists(indexPath)) {
-                sendFileResponse(client, indexPath);
-                return;
-            }
-
-            // Handle directory listing
-            if (location.getAutoIndex()) {
-                handleDirectoryListing(client, path);
-            } else {
-                sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
-            }
-            return;
         }
 
         // Handle file requests
         if (!FileHandler::fileExists(path)) {
+            std::cerr << "DEBUG: File not found, calling sendErrorResponse for 404" << std::endl;
             sendErrorResponse(client, 404, "Not Found", servers[0]->config);
             return;
         }
@@ -450,17 +514,34 @@ void Server::removeClient(int client_fd) {
 
 
 void Server::sendErrorResponse(Client* client, int statusCode, const std::string& message, const ServerConfig& config) {
+    std::cerr << "DEBUG: sendErrorResponse called for code " << statusCode << std::endl;
     std::string errorPage;
     const std::map<int, std::string>& errorPages = config.getErrorPages();
+    std::cerr << "DEBUG: errorPages size: " << errorPages.size() << std::endl;
+    for (std::map<int, std::string>::const_iterator it = errorPages.begin(); it != errorPages.end(); ++it) {
+        std::cerr << "DEBUG: errorPages[" << it->first << "] = " << it->second << std::endl;
+    }
     std::map<int, std::string>::const_iterator it = errorPages.find(statusCode);
 
     // Try to get configured error page
     if (it != errorPages.end()) {
+        // --- PATCH: normalizza il path e aggiungi log ---
+        std::string errorPagePath = config.getRoot();
+        if (!errorPagePath.empty() && errorPagePath[errorPagePath.size()-1] == '/')
+            errorPagePath.erase(errorPagePath.size()-1);
+        std::string relPath = it->second;
+        if (!relPath.empty() && relPath[0] == '/')
+            relPath.erase(0, 1);
+        errorPagePath += "/" + relPath;
+        std::cerr << "DEBUG: Trying to read custom error page: '" << errorPagePath << "'" << std::endl;
         try {
-            errorPage = FileHandler::readFile(config.getRoot() + it->second);
+            errorPage = FileHandler::readFile(errorPagePath);
+            std::cerr << "DEBUG: Custom error page loaded successfully, size: " << errorPage.size() << " bytes" << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "Error reading error page: " << e.what() << std::endl;
         }
+    } else {
+        std::cerr << "DEBUG: No custom error page configured for status code " << statusCode << std::endl;
     }
 
     // Fallback to default error page
@@ -500,10 +581,10 @@ void Server::handlePostRequest(Client* client) {
         requestPath = FileHandler::sanitizePath(requestPath);
         std::cout << "DEBUG: Request path = " << requestPath << std::endl;
 
-        const LocationConfig& location = config.getLocationForPath(requestPath);
+        const LocationConfig& location = servers[0]->config.getLocationForPath(requestPath);
         std::cout << "DEBUG: Available locations: ";
         // Print available locations for debugging
-        const std::vector<LocationConfig>& locations = config.getLocations();
+        const std::vector<LocationConfig>& locations = servers[0]->config.getLocations();
         for (std::vector<LocationConfig>::const_iterator it = locations.begin(); 
              it != locations.end(); ++it) {
             std::cout << " - '" << it->getPath() << "'";
@@ -579,6 +660,29 @@ void Server::handlePostRequest(Client* client) {
             return;
         }
         
+        // Handle binary content types
+        if (contentType.find("application/octet-stream") != std::string::npos ||
+            contentType.find("application/binary") != std::string::npos) {
+            // Check for empty body in binary uploads
+            if (requestBody.empty()) {
+                sendErrorResponse(client, 400, "Bad Request: Empty request body", servers[0]->config);
+                return;
+            }
+            
+            std::string filename = "binary_" + toString(time(NULL)) + ".bin";
+            std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
+            
+            if (FileHandler::writeFile(fullPath, client->request.getBody())) {
+                std::string successContent = "<html><body><h1>Binary Data Received</h1>";
+                successContent += "<p>Your binary data has been successfully saved.</p>";
+                successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
+                sendResponse(client, 201, successContent);
+            } else {
+                sendErrorResponse(client, 500, "Failed to save binary data", servers[0]->config);
+            }
+            return;
+        }
+        
         // Handle application/x-www-form-urlencoded
         if (contentType.find("application/x-www-form-urlencoded") != std::string::npos) {
             std::map<std::string, std::string> formData;
@@ -615,6 +719,12 @@ void Server::handlePostRequest(Client* client) {
         
         // Handle text/plain or other content types
         if (contentType.find("text/plain") != std::string::npos || contentType.empty()) {
+            // Check for empty body in text uploads
+            if (requestBody.empty()) {
+                sendErrorResponse(client, 400, "Bad Request: Empty request body", servers[0]->config);
+                return;
+            }
+            
             std::string filename = "text_" + toString(time(NULL)) + ".txt";
             std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
             
@@ -793,7 +903,7 @@ void Server::parseMultipartBody(const std::string& body, const std::string& boun
 
 void Server::handleDeleteRequest(Client* client) {
     try {
-        const LocationConfig& location = config.getLocationForPath(client->request.getPath());
+        const LocationConfig& location = servers[0]->config.getLocationForPath(client->request.getPath());
         std::cout << "=== DEBUG DELETE ===" << "\n"
                  << "Requested path: " << client->request.getPath() << "\n"
                  << "Matched location: " << location.getPath() << "\n"
@@ -808,12 +918,12 @@ void Server::handleDeleteRequest(Client* client) {
 
         // Check if DELETE is allowed for this location
         if (!location.getAllowDelete()) {
-            sendErrorResponse(client, 403, "DELETE method not allowed for this location", config);
+            sendErrorResponse(client, 403, "DELETE method not allowed for this location", servers[0]->config);
             return;
         }
 
         // Get the full path of the file to delete
-        std::string resolvedPath = config.getFullPath(client->request.getPath());
+        std::string resolvedPath = servers[0]->config.getFullPath(client->request.getPath());
 
         // Debug information
         std::cout << "DELETE Request:\n"
@@ -822,16 +932,16 @@ void Server::handleDeleteRequest(Client* client) {
                   << "  - Resolved: " << resolvedPath << std::endl;
 
         // Security: Prevent path traversal
-        std::string serverRoot = getAbsolutePath(config.getRoot());
+        std::string serverRoot = getAbsolutePath(servers[0]->config.getRoot());
         if (!FileHandler::isPathWithinRoot(resolvedPath, serverRoot)) {
             std::cerr << "Path traversal attempt blocked: " << resolvedPath << std::endl;
-            sendErrorResponse(client, 403, "Forbidden: Invalid path", config);
+            sendErrorResponse(client, 403, "Forbidden: Invalid path", servers[0]->config);
             return;
         }
 
         // Check if the file exists
         if (!FileHandler::exists(resolvedPath)) {
-            sendErrorResponse(client, 404, "File not found", config);
+            sendErrorResponse(client, 404, "File not found", servers[0]->config);
             return;
         }
 
@@ -852,11 +962,11 @@ void Server::handleDeleteRequest(Client* client) {
             response += "Deleted";
             send(client->fd, response.c_str(), response.length(), 0);
         } else {
-            sendErrorResponse(client, 500, "Failed to delete file", config);
+            sendErrorResponse(client, 500, "Failed to delete file", servers[0]->config);
         }
     } catch (const std::exception& e) {
         std::cerr << "DELETE Error: " << e.what() << std::endl;
-        sendErrorResponse(client, 500, "Internal Server Error", config);
+        sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
     }
 }
 
@@ -876,30 +986,6 @@ void Server::handleRequest(const Request& request, Response& response) {
 
 void Server::processRequest(Client* client) {
     try {
-        std::cout << "Processing " << client->request.getMethod() << " request for: " << client->request.getPath() << std::endl;
-        
-        // Debug delle location disponibili
-        std::cout << "DEBUG: Available locations:" << std::endl;
-        if (!servers.empty()) {
-            const std::vector<LocationConfig>& locations = servers[0]->config.getLocations();
-            for (std::vector<LocationConfig>::const_iterator it = locations.begin(); it != locations.end(); ++it) {
-                std::cout << " - '" << it->getPath() << "'" << std::endl;
-                
-                // Per la location /cgi-bin/, mostra gli interpreti
-                if (it->getPath() == "/cgi-bin") {
-                    const std::map<std::string, std::string>& cgiMap = it->getCgiInterpreters();
-                    std::cout << "   CGI interpreters: " << cgiMap.size() << std::endl;
-                    for (std::map<std::string, std::string>::const_iterator cgi_it = cgiMap.begin(); cgi_it != cgiMap.end(); ++cgi_it) {
-                        std::cout << "   - '" << cgi_it->first << "' -> '" << cgi_it->second << "'" << std::endl;
-                    }
-                }
-            }
-        }
-
-        if (client->request.getMethod() == "OPTIONS") {
-            servers[0]->handleOptionsRequest(client);
-            return;
-        }
         try {
             const Request& req = client->request;
             
@@ -912,15 +998,57 @@ void Server::processRequest(Client* client) {
             std::cout << "Processing " << method << " request for: " 
                     << req.getPath() << std::endl;
 
+            // Get location configuration for method validation
+            const LocationConfig& location = servers[0]->config.getLocationForPath(req.getPath());
+            const std::vector<std::string>& allowedMethods = location.getAllowedMethods();
+            
+            // Check if method is implemented by server
+            bool isImplementedMethod = (method == "GET" || method == "POST" || method == "DELETE" || method == "HEAD" || method == "OPTIONS");
+            
+            if (!isImplementedMethod) {
+                // 501 Not Implemented for unknown methods
+                Server::sendErrorResponse(client, 501, "Not Implemented", servers[0]->config);
+                return;
+            }
+            
+            // Check if method is allowed for this location (405 Method Not Allowed)
+            std::cout << "DEBUG: Checking if method '" << method << "' is allowed for location '" << location.getPath() << "'" << std::endl;
+            std::cout << "DEBUG: Allowed methods for this location: ";
+            for (std::vector<std::string>::const_iterator it = allowedMethods.begin(); 
+                 it != allowedMethods.end(); ++it) {
+                std::cout << "'" << *it << "' ";
+            }
+            std::cout << std::endl;
+            
+            bool isMethodAllowed = false;
+            for (std::vector<std::string>::const_iterator it = allowedMethods.begin(); 
+                 it != allowedMethods.end(); ++it) {
+                if (*it == method) {
+                    isMethodAllowed = true;
+                    break;
+                }
+            }
+            
+            std::cout << "DEBUG: Method allowed: " << (isMethodAllowed ? "YES" : "NO") << std::endl;
+            
+            if (!isMethodAllowed) {
+                // 405 Method Not Allowed with Allow header
+                std::cout << "DEBUG: Method " << method << " not allowed for location " << location.getPath() << std::endl;
+                sendMethodNotAllowedResponse(client, allowedMethods);
+                return;
+            }
+
             // Find a server instance to handle the request
             // In this case we'll use the first server in the list
             if (!servers.empty()) {
-                if (method == "GET") {
+                if (method == "GET" || method == "HEAD") {
                     servers[0]->handleGetRequest(client);
                 } else if (method == "POST") {
                     servers[0]->handlePostRequest(client);
                 } else if (method == "DELETE") {
                     servers[0]->handleDeleteRequest(client);
+                } else if (method == "OPTIONS") {
+                    sendOptionsResponse(client, allowedMethods);
                 } else {
                     Server::sendErrorResponse(client, 501, "Not Implemented", servers[0]->config); 
                 }
@@ -1013,6 +1141,7 @@ void Server::sendResponse(Client* client, int status, const std::string& content
         case 400: statusText = "Bad Request"; break;
         case 403: statusText = "Forbidden"; break;
         case 404: statusText = "Not Found"; break;
+        case 405: statusText = "Method Not Allowed"; break;
         case 500: statusText = "Internal Server Error"; break;
         case 501: statusText = "Not Implemented"; break;
         default: statusText = "Unknown";
@@ -1078,4 +1207,64 @@ void Server::setPollEvents(size_t index, short events) {
     if (index < poll_fds.size()) {
         poll_fds[index].events = events;
     }
+}
+
+void Server::sendMethodNotAllowedResponse(Client* client, const std::vector<std::string>& allowedMethods) {
+    // Build Allow header with permitted methods
+    std::string allowHeader = "";
+    for (size_t i = 0; i < allowedMethods.size(); ++i) {
+        if (i > 0) allowHeader += ", ";
+        allowHeader += allowedMethods[i];
+    }
+    
+    // Always include OPTIONS in Allow header
+    if (!allowHeader.empty()) allowHeader += ", ";
+    allowHeader += "OPTIONS";
+    
+    std::string errorContent = "<html><head><title>405 Method Not Allowed</title></head>"
+                              "<body><h1>405 Method Not Allowed</h1>"
+                              "<p>The method you requested is not allowed for this resource.</p>"
+                              "<p>Allowed methods: " + allowHeader + "</p>"
+                              "<p><a href=\"/\">Return to home</a></p></body></html>";
+    
+    std::string response = "HTTP/1.1 405 Method Not Allowed\r\n";
+    response += "Allow: " + allowHeader + "\r\n";
+    response += "Access-Control-Allow-Origin: *\r\n";
+    response += "Access-Control-Allow-Methods: " + allowHeader + "\r\n";
+    response += "Access-Control-Allow-Headers: Content-Type, Content-Length\r\n";
+    response += "Content-Type: text/html\r\n";
+    response += "Content-Length: " + toString(errorContent.size()) + "\r\n";
+    
+    if (client->shouldKeepAlive()) {
+        response += "Connection: keep-alive\r\n";
+        response += "Keep-Alive: timeout=5, max=100\r\n";
+    } else {
+        response += "Connection: close\r\n";
+    }
+    
+    response += "\r\n" + errorContent;
+    send(client->fd, response.c_str(), response.size(), 0);
+}
+
+void Server::sendOptionsResponse(Client* client, const std::vector<std::string>& allowedMethods) {
+    // Build Allow header with permitted methods
+    std::string allowHeader = "";
+    for (size_t i = 0; i < allowedMethods.size(); ++i) {
+        if (i > 0) allowHeader += ", ";
+        allowHeader += allowedMethods[i];
+    }
+    
+    // Always include OPTIONS in Allow header
+    if (!allowHeader.empty()) allowHeader += ", ";
+    allowHeader += "OPTIONS";
+    
+    std::string response = "HTTP/1.1 200 OK\r\n";
+    response += "Allow: " + allowHeader + "\r\n";
+    response += "Access-Control-Allow-Origin: *\r\n";
+    response += "Access-Control-Allow-Methods: " + allowHeader + "\r\n";
+    response += "Access-Control-Allow-Headers: Content-Type, Content-Length\r\n";
+    response += "Content-Length: 0\r\n";
+    response += "\r\n";
+    
+    send(client->fd, response.c_str(), response.size(), 0);
 }

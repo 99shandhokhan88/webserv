@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>405 - Method Not Allowed</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .error-container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 60px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+        }
+        .error-code {
+            font-size: 8rem;
+            font-weight: bold;
+            margin: 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .error-message {
+            font-size: 2rem;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .error-description {
+            font-size: 1.2rem;
+            margin: 30px 0;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        .method-info {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .method-info h3 {
+            margin-top: 0;
+            color: #e74c3c;
+        }
+        .method-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .method-info li {
+            margin: 5px 0;
+        }
+        .back-button {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        .tech-details {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1 class="error-code">405</h1>
+        <h2 class="error-message">Method Not Allowed</h2>
+        <p class="error-description">
+            Il metodo HTTP che hai utilizzato non è consentito per questa risorsa.
+        </p>
+        
+        <div class="method-info">
+            <h3>🚫 Cosa è successo?</h3>
+            <ul>
+                <li><strong>Metodo non permesso:</strong> Il metodo HTTP richiesto non è consentito per questa URL</li>
+                <li><strong>Configurazione server:</strong> La location ha restrizioni sui metodi HTTP accettati</li>
+                <li><strong>Sicurezza:</strong> Questa è una misura di sicurezza per proteggere il server</li>
+            </ul>
+            
+            <h3>🔧 Cosa puoi fare?</h3>
+            <ul>
+                <li>Controlla l'header "Allow" nella risposta per vedere i metodi consentiti</li>
+                <li>Usa il metodo OPTIONS per vedere tutti i metodi supportati</li>
+                <li>Verifica la configurazione del server se sei l'amministratore</li>
+                <li>Usa un metodo HTTP appropriato (GET, POST, DELETE, etc.)</li>
+            </ul>
+        </div>
+
+        <a href="/" class="back-button">🏠 Torna alla homepage</a>
+        
+        <div class="tech-details">
+            Error Code: HTTP 405 Method Not Allowed<br>
+            Check the Allow header for permitted methods
+        </div>
+    </div>
+</body>
+</html> 

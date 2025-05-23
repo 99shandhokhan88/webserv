@@ -7,6 +7,8 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <signal.h>
+#include <poll.h>
 #include "../../HTTP/incs/Request.hpp"
 #include "../../Config/incs/LocationConfig.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
@@ -246,43 +248,113 @@ std::string CGIExecutor::execute() {
         }
         close(pipe_in[1]);
 
-        // Read output with timeout
+        // Read output with timeout using poll() instead of select()
         std::string output;
         char buffer[4096];
         ssize_t bytes_read;
-        int timeout = 30; // 30 seconds timeout
-        fd_set read_fds;
-        struct timeval tv;
+        int timeout_seconds = 30; // 30 seconds timeout
+        bool timeout_occurred = false;
 
+        // Setup non-blocking I/O
+        fcntl(pipe_out[0], F_SETFL, O_NONBLOCK);
+
+        time_t start_time = time(NULL);
         while (true) {
-            FD_ZERO(&read_fds);
-            FD_SET(pipe_out[0], &read_fds);
-            tv.tv_sec = timeout;
-            tv.tv_usec = 0;
-
-            int ready = select(pipe_out[0] + 1, &read_fds, NULL, NULL, &tv);
-            if (ready == -1) {
-                close(pipe_out[0]);
-                free_env(args);
-                throw std::runtime_error("Select failed: " + std::string(strerror(errno)));
-            }
-            if (ready == 0) {
-                close(pipe_out[0]);
-                free_env(args);
-                throw std::runtime_error("CGI script timed out after " + toString(timeout) + " seconds");
+            time_t current_time = time(NULL);
+            int remaining_time = timeout_seconds - (current_time - start_time);
+            
+            if (remaining_time <= 0) {
+                std::cerr << "CGI TIMEOUT: Script exceeded " << timeout_seconds << " seconds, terminating process " << pid << std::endl;
+                timeout_occurred = true;
+                break;
             }
 
-            bytes_read = read(pipe_out[0], buffer, sizeof(buffer));
-            if (bytes_read <= 0) break;
-            output.append(buffer, bytes_read);
+            // Use poll() instead of select() - consistent with project choice
+            struct pollfd pfd;
+            pfd.fd = pipe_out[0];
+            pfd.events = POLLIN;
+            pfd.revents = 0;
+
+            int poll_timeout_ms = remaining_time * 1000; // Convert to milliseconds
+            int poll_result = poll(&pfd, 1, poll_timeout_ms);
+            
+            if (poll_result == -1) {
+                if (errno == EINTR) continue; // Interrupted by signal, retry
+                close(pipe_out[0]);
+                free_env(args);
+                kill(pid, SIGKILL); // Terminate child process
+                waitpid(pid, NULL, 0); // Clean up zombie
+                throw std::runtime_error("Poll failed: " + std::string(strerror(errno)));
+            }
+            if (poll_result == 0) {
+                std::cerr << "CGI TIMEOUT: No data available within timeout" << std::endl;
+                timeout_occurred = true;
+                break;
+            }
+
+            if (pfd.revents & POLLIN) {
+                bytes_read = read(pipe_out[0], buffer, sizeof(buffer));
+                if (bytes_read < 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        continue; // No data available, continue waiting
+                    }
+                    std::cerr << "Read error: " << strerror(errno) << std::endl;
+                    break;
+                } else if (bytes_read == 0) {
+                    std::cerr << "CGI process closed output pipe" << std::endl;
+                    break; // EOF
+                } else {
+                    output.append(buffer, bytes_read);
+                }
+            }
+            
+            if (pfd.revents & (POLLHUP | POLLERR)) {
+                std::cerr << "CGI process closed connection or error occurred" << std::endl;
+                break;
+            }
         }
         close(pipe_out[0]);
+
+        // Handle timeout
+        if (timeout_occurred) {
+            std::cerr << "CGI TIMEOUT: Terminating child process " << pid << std::endl;
+            
+            // First try SIGTERM (graceful termination)
+            if (kill(pid, SIGTERM) == 0) {
+                sleep(2); // Give process 2 seconds to terminate gracefully
+                
+                // Check if process is still alive
+                int status;
+                pid_t result = waitpid(pid, &status, WNOHANG);
+                if (result == 0) {
+                    // Process still alive, force kill
+                    std::cerr << "CGI TIMEOUT: Process " << pid << " didn't respond to SIGTERM, sending SIGKILL" << std::endl;
+                    kill(pid, SIGKILL);
+                    waitpid(pid, &status, 0); // Wait for forced termination
+                }
+            }
+            
+            free_env(args);
+            throw std::runtime_error("CGI_TIMEOUT:CGI script timed out after " + toString(timeout_seconds) + " seconds");
+        }
 
         // Cleanup arguments
         free_env(args);
 
         int status;
-        waitpid(pid, &status, 0);
+        pid_t wait_result = waitpid(pid, &status, 0);
+        if (wait_result == -1) {
+            throw std::runtime_error("Failed to wait for CGI process: " + std::string(strerror(errno)));
+        }
+
+        // Check if child process exited normally
+        if (WIFSIGNALED(status)) {
+            int sig = WTERMSIG(status);
+            throw std::runtime_error("CGI process terminated by signal " + toString(sig));
+        }
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+            throw std::runtime_error("CGI process exited with status " + toString(WEXITSTATUS(status)));
+        }
 
         // --- PARSING CGI OUTPUT ---
         std::cout << "DEBUG: CGI raw output size: " << output.size() << " bytes." << std::endl;

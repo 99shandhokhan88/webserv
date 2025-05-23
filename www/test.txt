@@ -1,4 +1,1 @@
-This is a test text file.
-It contains multiple lines
-to test GET requests.
-Feel free to modify this content. 
+Test file content

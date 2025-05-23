@@ -118,6 +118,11 @@ void ServerConfig::setUploadDir(const std::string& dir) {
 
 void ServerConfig::loadConfig(const std::string& configFilePath)
 {
+    // Validation: check file extension
+    if (configFilePath.length() < 5 || configFilePath.substr(configFilePath.length() - 5) != ".conf") {
+        throw std::runtime_error("Configuration file must have .conf extension: " + configFilePath);
+    }
+    
     // Add debug output
     std::cerr << "Attempting to open config file: " << configFilePath << std::endl;
 
@@ -131,22 +136,99 @@ if (!configFile.is_open())
 }
 
     std::string line;
+    bool inServerBlock = false;
+    bool hasServerBlock = false;
+    bool hasValidConfig = false;
+    int lineCount = 0;
+    int nonEmptyLines = 0;
+    
     while (std::getline(configFile, line)) {
+        lineCount++;
+        // Remove comments and trim whitespace
+        line = line.substr(0, line.find('#'));
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        
+        if (line.empty()) continue;
+        
+        nonEmptyLines++;
+        
         std::istringstream iss(line);
         std::string key;
         iss >> key;
 
-        if (key == "listen") {
-            iss >> port; // Estrai la porta
-        } else if (key == "root") {
-            iss >> root; // Estrai la root directory
-        } else if (key == "index") {
-            iss >> index; // Estrai il file index
-        } else if (key == "location") {
-            std::string path;
-            iss >> path;
-            parseLocationBlock(configFile, path); // Gestisci il blocco location
+        if (key == "server" && line.find("{") != std::string::npos) {
+            inServerBlock = true;
+            hasServerBlock = true;
+            std::cerr << "DEBUG: Entering server block" << std::endl;
+            continue;
+        } else if (line == "}") {
+            inServerBlock = false;
+            std::cerr << "DEBUG: Exiting server block" << std::endl;
+            continue;
         }
+        
+        if (inServerBlock) {
+            if (key == "listen") {
+                iss >> port; // Estrai la porta
+                if (port > 0) hasValidConfig = true;
+                std::cerr << "DEBUG: Set port to " << port << std::endl;
+            } else if (key == "root") {
+                iss >> root; // Estrai la root directory
+                // Remove trailing semicolon
+                if (!root.empty() && root[root.length()-1] == ';') {
+                    root.erase(root.length()-1);
+                }
+                std::cerr << "DEBUG: Set root to " << root << std::endl;
+            } else if (key == "index") {
+                iss >> index; // Estrai il file index
+                // Remove trailing semicolon
+                if (!index.empty() && index[index.length()-1] == ';') {
+                    index.erase(index.length()-1);
+                }
+                std::cerr << "DEBUG: Set index to " << index << std::endl;
+            } else if (key == "error_page") {
+                int code;
+                std::string path;
+                iss >> code >> path;
+                // Remove trailing semicolon
+                if (!path.empty() && path[path.length()-1] == ';') {
+                    path.erase(path.length()-1);
+                }
+                std::cerr << "DEBUG: Parsing error_page directive: code=" << code << ", path=" << path << std::endl;
+                error_pages[code] = path;
+                std::cerr << "DEBUG: Added error page to server config" << std::endl;
+            } else if (key == "location") {
+                std::string path;
+                iss >> path;
+                parseLocationBlock(configFile, path); // Gestisci il blocco location
+            }
+        }
+    }
+
+    // Validation: check if config file is empty or invalid
+    if (lineCount == 0) {
+        throw std::runtime_error("Configuration file is completely empty: " + configFilePath);
+    }
+    
+    if (nonEmptyLines == 0) {
+        throw std::runtime_error("Configuration file contains no valid directives (only empty lines/comments): " + configFilePath);
+    }
+    
+    if (!hasServerBlock) {
+        throw std::runtime_error("Configuration file must contain at least one 'server' block: " + configFilePath);
+    }
+    
+    if (!hasValidConfig) {
+        throw std::runtime_error("Server block must contain at least 'listen' directive with valid port: " + configFilePath);
+    }
+    
+    if (port <= 0 || port > 65535) {
+        throw std::runtime_error("Invalid port number in configuration. Port must be between 1 and 65535: " + configFilePath);
+    }
+    
+    if (root.empty()) {
+        throw std::runtime_error("Server block must contain 'root' directive: " + configFilePath);
     }
 
     std::cout << "Config file loaded: " << configFilePath << std::endl;

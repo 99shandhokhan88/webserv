@@ -204,7 +204,9 @@ void ConfigParser::parseDirective(const std::string& line, ServerConfig& server)
         int code;
         std::string path;
         iss >> code >> path;
+        std::cerr << "DEBUG: Parsing error_page directive: code=" << code << ", path=" << path << std::endl;
         server.addErrorPage(code, path);
+        std::cerr << "DEBUG: Added error page to server config" << std::endl;
     }
 }
 
