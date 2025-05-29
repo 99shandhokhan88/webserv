@@ -90,7 +90,11 @@ char** CGIExecutor::createExecArgs() const {
     // Configurazione per diversi tipi di script
     char** args = new char*[3];
     args[0] = strdup(interpreter.c_str());
-    args[1] = strdup(script_path.c_str());
+    // Estrai solo il nome del file (basename)
+size_t last_slash = script_path.find_last_of('/');
+std::string script_name = (last_slash != std::string::npos) ? script_path.substr(last_slash + 1) : script_path;
+args[1] = strdup(script_name.c_str());
+
     args[2] = NULL;
     return args;
 }

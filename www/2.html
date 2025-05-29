@@ -1,0 +1,123 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webserv Test Suite</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Webserv Test Suite</h1>
+            <p class="subtitle">A comprehensive testing environment for our HTTP server implementation</p>
+        </header>
+
+        <div class="card-grid">
+            <!-- POST Tests -->
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-paper-plane"></i>
+                </div>
+                <h2>POST Method Tests</h2>
+                <p>Test different types of POST requests</p>
+                <ul class="feature-list">
+                    <li>Google-style Form</li>
+                    <li>Simple Message Post</li>
+                    <li>File Upload</li>
+                </ul>
+                <a href="/post_tests.html" class="button button-primary">Run POST Tests</a>
+            </div>
+
+            <!-- GET Tests -->
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <h2>GET Method Tests</h2>
+                <p>Test various GET request scenarios</p>
+                <ul class="feature-list">
+                    <li>Static Files</li>
+                    <li>Query Parameters</li>
+                    <li>Directory Listing</li>
+                </ul>
+                <a href="/get_tests.html" class="button button-secondary">Run GET Tests</a>
+            </div>
+
+            <!-- DELETE Tests -->
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h2>DELETE Method Tests</h2>
+                <p>Test file deletion functionality</p>
+                <ul class="feature-list">
+                    <li>File Deletion</li>
+                    <li>Error Handling</li>
+                    <li>Permission Tests</li>
+                </ul>
+                <a href="/delete_tests.html" class="button button-accent">Run DELETE Tests</a>
+            </div>
+        </div>
+
+        <!-- CGI Tests Section -->
+        <div class="card">
+            <div class="card-icon">
+                <i class="fas fa-code"></i>
+            </div>
+            <h2>CGI Script Tests</h2>
+            <p>Test CGI script execution in different languages (Python, Bash, C++, ...)</p>
+            <div class="cgi-grid">
+                <a href="/cgi.html" class="button button-primary">Vai alla pagina CGI (multi-linguaggio)</a>
+            </div>
+        </div>
+
+
+        <br>
+
+        
+        <!-- Additional Tools -->
+        <div class="card">
+            <h2>Test Resources</h2>
+            <p>Additional testing tools and resources</p>
+            <ul class="feature-list">
+                <li>File Upload Interface</li>
+                <li>Directory Browser</li>
+                <li>Error Pages</li>
+            </ul>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/uploads/" class="button button-primary">Browse Files</a>
+                <a href="/errors/404.html" class="button button-secondary">Test 404</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>Webserv Project - HTTP/1.1 Server Implementation</p>
+        </footer>
+    </div>
+
+    <style>
+    .cgi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    .cgi-item {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .cgi-item h3 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+    .cgi-item i {
+        margin-right: 0.5rem;
+    }
+    </style>
+</body>
+</html>

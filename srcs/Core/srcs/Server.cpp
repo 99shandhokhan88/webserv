@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/15 22:08:18 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/29 23:06:00 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -465,226 +465,121 @@ void Server::handleGetRequest(Client* client) {
         std::cout << "DEBUG: Handling GET request for " << client->request.getPath() << std::endl;
         std::cout << "DEBUG: Location path: " << location.getPath() << std::endl;
         std::cout << "DEBUG: Full file path: " << path << std::endl;
+        std::cout << "DEBUG: Autoindex setting: " << location.getAutoIndex() << std::endl;
 
-        // Handle root path - serve index directly instead of redirect
-        if (client->request.getPath() == "/") {
-            std::string indexPath = path + location.getIndex();
-            std::cout << "DEBUG: Root path requested, checking index: " << indexPath << std::endl;
-            if (FileHandler::fileExists(indexPath)) {
-                std::cout << "DEBUG: Index file found, serving: " << indexPath << std::endl;
-                sendFileResponse(client, indexPath, false);
-                return;
-            } else {
-                std::cout << "DEBUG: Index file not found, checking autoindex..." << std::endl;
-                // If no index file and autoindex is enabled, show directory listing
-                if (location.getAutoIndex()) {
-                    std::cout << "DEBUG: Autoindex enabled for root, showing directory listing" << std::endl;
-                    handleDirectoryListing(client, path);
-                    return;
-                } else {
-                    std::cout << "DEBUG: Autoindex disabled for root, sending 403" << std::endl;
-                    sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
-                    return;
-                }
-            }
-        }
-
-        // Verifica speciale per script in /cgi-bin/
-        if (client->request.getPath().find("/cgi-bin/") == 0) {
-            std::cout << "DEBUG: Special handling for /cgi-bin/ path" << std::endl;
-            
-            // Verifica estensione
-            size_t dot_pos = path.find_last_of('.');
-            if (dot_pos != std::string::npos) {
-                std::string ext = path.substr(dot_pos);
-                std::cout << "DEBUG: File extension: " << ext << std::endl;
-                
-                // SOLUZIONE DIRETTA: Invece di controllare la mappa, eseguiamo direttamente 
-                // gli script in base all'estensione
-                std::string interpreter = "";
-                if (ext == ".py") {
-                    interpreter = "/usr/bin/python3";
-                    std::cout << "DEBUG: Using hardcoded Python interpreter: " << interpreter << std::endl;
-                } else if (ext == ".sh") {
-                    interpreter = "/bin/bash";
-                    std::cout << "DEBUG: Using hardcoded Bash interpreter: " << interpreter << std::endl;
-                } else if (ext == ".cgi") {
-                    interpreter = "/usr/bin/env";
-                    std::cout << "DEBUG: Using hardcoded Env interpreter: " << interpreter << std::endl;
-                } else if (ext == ".php") {
-                    interpreter = "/usr/bin/php";
-                    std::cout << "DEBUG: Using hardcoded PHP interpreter: " << interpreter << std::endl;
-                }
-                
-                if (!interpreter.empty()) {
-                    try {
-                        std::cout << "DEBUG: Executing CGI script: " << path << std::endl;
-                        
-                        // Verifica che il file esista ed abbia permessi di esecuzione
-                        if (!FileHandler::fileExists(path)) {
-                            std::cerr << "CGI Error: File not found: " << path << std::endl;
-                            sendErrorResponse(client, 404, "CGI Script Not Found", servers[0]->config);
-                            return;
-                        }
-                        
-                        // Imposta permessi di esecuzione se necessario
-                        if (!FileHandler::isExecutable(path)) {
-                            std::cout << "DEBUG: Setting executable permissions for " << path << std::endl;
-                            chmod(path.c_str(), 0755);
-                        }
-                        
-                        // Aggiungiamo manualmente l'interprete alla location
-                        LocationConfig modifiedLocation = location;
-                        modifiedLocation.addCgiInterpreter(ext, interpreter);
-                        
-                        // Verifichiamo che sia stato aggiunto
-                        std::cout << "DEBUG: Manually added interpreter: " << ext << " -> " << interpreter << std::endl;
-                        const std::map<std::string, std::string>& cgiMap = modifiedLocation.getCgiInterpreters();
-                        std::cout << "DEBUG: Modified location CGI map size: " << cgiMap.size() << std::endl;
-                        
-                        CGIExecutor cgi(client->request, modifiedLocation);
-                        std::string output = cgi.execute();
-                        if (output.empty()) {
-                            throw std::runtime_error("CGI execution failed");
-                        }
-                        std::cout << "DEBUG: CGI execution successful, output size: " << output.size() << std::endl;
-                        send(client->fd, output.c_str(), output.size(), 0);
-                        return;
-                    } catch (const std::exception& e) {
-                        std::cerr << "CGI Error: " << e.what() << std::endl;
-                        
-                        // Check if it's a timeout error
-                        std::string error_msg = e.what();
-                        if (error_msg.find("CGI_TIMEOUT:") == 0) {
-                            // Extract timeout message and send 504 Gateway Timeout
-                            std::string timeout_msg = error_msg.substr(12); // Remove "CGI_TIMEOUT:" prefix
-                            sendErrorResponse(client, 504, "Gateway Timeout: " + timeout_msg, servers[0]->config);
-                        } else {
-                            // Other CGI errors get 500 Internal Server Error
-                            sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
-                        }
-                        return;
-                    }
-                } else {
-                    std::cout << "DEBUG: Extension " << ext << " not supported for CGI" << std::endl;
-                }
-            }
-        }
-
-        // Handle directory requests
-        std::cout << "DEBUG: About to check if path is directory: '" << path << "'" << std::endl;
-        std::cout << "DEBUG: Request path was: '" << client->request.getPath() << "'" << std::endl;
-        
-        // PRIMA: controlla se il path è una directory
-        bool isDir = FileHandler::isDirectory(path);
-        std::cout << "DEBUG: isDirectory result: " << (isDir ? "true" : "false") << std::endl;
-        
-        if (isDir) {
-            std::cout << "DEBUG: Path is confirmed as directory" << std::endl;
-            
-            // Debug del controllo dello slash
-            std::string requestPath = client->request.getPath();
-            std::cout << "DEBUG: Request path: '" << requestPath << "'" << std::endl;
-            std::cout << "DEBUG: Path length: " << requestPath.size() << std::endl;
-            if (!requestPath.empty()) {
-                char lastChar = requestPath[requestPath.size() - 1];
-                std::cout << "DEBUG: Last character: '" << lastChar << "' (ASCII: " << (int)lastChar << ")" << std::endl;
-                std::cout << "DEBUG: Ends with slash? " << (lastChar == '/' ? "YES" : "NO") << std::endl;
-            }
-            
-            // Se il percorso NON termina con /, fai redirect aggiungendo /
-            if (requestPath.empty() || requestPath[requestPath.size() - 1] != '/') {
-                std::cout << "DEBUG: Path does NOT end with slash - should redirect" << std::endl;
-                
-                try {
-                    std::string redirectUrl = client->request.getPath() + "/";
-                    std::cout << "DEBUG: Redirect URL created: '" << redirectUrl << "'" << std::endl;
-                    
-                    std::string redirectContent = "<html><body>Redirecting to <a href=\"" + redirectUrl + "\">" + redirectUrl + "</a></body></html>";
-                    std::cout << "DEBUG: Redirect content created, size: " << redirectContent.size() << std::endl;
-                    
-                    std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
-                    response += "Location: " + redirectUrl + "\r\n";
-                    response += "Content-Length: " + toString(redirectContent.size()) + "\r\n";
-                    response += "\r\n" + redirectContent;
-                    std::cout << "DEBUG: Response built, size: " << response.size() << std::endl;
-                    
-                    std::cout << "DEBUG: About to send redirect response..." << std::endl;
-                    ssize_t sent = send(client->fd, response.c_str(), response.size(), 0);
-                    std::cout << "DEBUG: Sent " << sent << " bytes (expected " << response.size() << ")" << std::endl;
-                    
-                    if (sent < 0) {
-                        std::cerr << "ERROR: send() failed: " << strerror(errno) << std::endl;
-                    }
-                    
-                    std::cout << "DEBUG: Redirect completed successfully" << std::endl;
-                    return;
-                } catch (const std::exception& e) {
-                    std::cerr << "ERROR in redirect: " << e.what() << std::endl;
-                    sendErrorResponse(client, 500, "Redirect failed", servers[0]->config);
-                    return;
-                }
-            }
-            // Se il percorso termina già con /, mostra il directory listing o index
-            else {
-                std::cout << "DEBUG: Path ends with slash - should show listing or index" << std::endl;
-                std::cout << "DEBUG: Selected location path: '" << location.getPath() << "'" << std::endl;
-                std::cout << "DEBUG: location.getAutoIndex() = " << (location.getAutoIndex() ? "true" : "false") << std::endl;
-                
-                // Try to serve index file
-                std::string indexPath = path + location.getIndex();
-                std::cout << "DEBUG: Checking for index file: " << indexPath << std::endl;
-                if (FileHandler::fileExists(indexPath)) {
-                    std::cout << "DEBUG: Index file found, serving: " << indexPath << std::endl;
-                    sendFileResponse(client, indexPath, false);
-                } 
-                // Se non c'è un index file e autoindex è attivo, mostra il listing
-                else if (location.getAutoIndex()) {
-                    std::cout << "DEBUG: No index file, showing directory listing (autoindex enabled)" << std::endl;
-                    handleDirectoryListing(client, path);
-                } else {
-                    std::cout << "DEBUG: No index file and autoindex disabled - sending 403" << std::endl;
-                    std::cout << "DEBUG: location.getAutoIndex() returned: " << (location.getAutoIndex() ? "true" : "false") << std::endl;
-                    std::cout << "DEBUG: Location path: '" << location.getPath() << "'" << std::endl;
-                    sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
-                }
-                return;
-            }
-        }
-
-        // Handle file requests
-        if (!FileHandler::fileExists(path)) {
-            std::cerr << "DEBUG: File not found, calling sendErrorResponse for 404" << std::endl;
-            sendErrorResponse(client, 404, "Not Found", servers[0]->config);
+        // Gestione richieste CGI
+        if (isCgiRequest(location, client->request.getPath())) {
+            handleCgiRequest(client, location);
             return;
         }
 
-        // Get file extension and set appropriate content type
-        std::string extension = path.substr(path.find_last_of(".") + 1);
-        std::string contentType = "text/plain";
-        
-        if (extension == "html" || extension == "htm") contentType = "text/html";
-        else if (extension == "css") contentType = "text/css";
-        else if (extension == "js") contentType = "application/javascript";
-        else if (extension == "jpg" || extension == "jpeg") contentType = "image/jpeg";
-        else if (extension == "png") contentType = "image/png";
-        else if (extension == "gif") contentType = "image/gif";
-        else if (extension == "txt") contentType = "text/plain";
-        else if (extension == "pdf") contentType = "application/pdf";
+        // Gestione richiesta root
+        if (client->request.getPath() == "/") {
+            handleRootRequest(client, location, path);
+            return;
+        }
 
-        // Read and send file with appropriate content type
-        std::string fileContent = FileHandler::readFile(path);
-        std::string response = "HTTP/1.1 200 OK\r\n";
-        response += "Content-Type: " + contentType + "\r\n";
-        response += "Content-Length: " + toString(fileContent.size()) + "\r\n";
-        response += "\r\n";
-        response += fileContent;
-        
-        send(client->fd, response.c_str(), response.size(), 0);
+        // Gestione directory
+        if (FileHandler::isDirectory(path)) {
+            handleDirectoryRequest(client, location, path);
+            return;
+        }
+
+        // Gestione file regolari
+        if (FileHandler::fileExists(path)) {
+            sendFileResponse(client, path, false);
+            return;
+        }
+
+        // File non trovato
+        sendErrorResponse(client, 404, "Not Found", servers[0]->config);
 
     } catch (const std::exception& e) {
         std::cerr << "Error handling GET request: " << e.what() << std::endl;
         sendErrorResponse(client, 500, "Internal Server Error", servers[0]->config);
+    }
+}
+
+// Funzioni helper aggiuntive
+
+void Server::handleRootRequest(Client* client, const LocationConfig& location, const std::string& path) {
+    // Prima verifica se esiste un index file
+    std::string indexPath = path + location.getIndex();
+    
+    if (FileHandler::fileExists(indexPath) && !location.getAutoIndex()) {
+        // Servi index.html SOLO se autoindex è disabilitato
+        sendFileResponse(client, indexPath, false);
+    } else if (location.getAutoIndex()) {
+        // Mostra directory listing se autoindex è abilitato
+        handleDirectoryListing(client, path);
+    } else {
+        // Altrimenti errore 403
+        sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
+    }
+}
+void Server::handleDirectoryRequest(Client* client, const LocationConfig& location, const std::string& path) {
+    std::string requestPath = client->request.getPath();
+    
+    // Redirect se manca lo slash finale
+    if (requestPath.empty() || requestPath[requestPath.size() - 1] != '/') {
+        std::string redirectUrl = requestPath + "/";
+        std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
+        response += "Location: " + redirectUrl + "\r\n";
+        response += "Content-Length: 0\r\n\r\n";
+        send(client->fd, response.c_str(), response.size(), 0);
+        return;
+    }
+    
+    // Cerca index file
+    std::string indexPath = path + location.getIndex();
+    if (FileHandler::fileExists(indexPath)) {
+        sendFileResponse(client, indexPath, false);
+        return;
+    }
+    
+    // Autoindex se abilitato
+    if (location.getAutoIndex()) {
+        handleDirectoryListing(client, path);
+    } else {
+        sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
+    }
+}
+
+void Server::handleCgiRequest(Client* client, const LocationConfig& location) {
+    std::string path = servers[0]->config.getFullPath(client->request.getPath());
+    size_t dot_pos = path.find_last_of('.');
+    std::string ext = path.substr(dot_pos);
+    
+    std::string interpreter;
+    if (ext == ".py") interpreter = "/usr/bin/python3";
+    else if (ext == ".sh") interpreter = "/bin/bash";
+    else if (ext == ".php") interpreter = "/usr/bin/php";
+    else if (ext == ".pl") interpreter = "/usr/bin/perl";
+    
+    if (!interpreter.empty()) {
+        try {
+            if (!FileHandler::fileExists(path)) {
+                sendErrorResponse(client, 404, "CGI Script Not Found", servers[0]->config);
+                return;
+            }
+            
+            if (!FileHandler::isExecutable(path)) {
+                chmod(path.c_str(), 0755);
+            }
+            
+            CGIExecutor cgi(client->request, location);
+            std::string output = cgi.execute();
+            send(client->fd, output.c_str(), output.size(), 0);
+        } catch (const std::exception& e) {
+            std::cerr << "CGI Error: " << e.what() << std::endl;
+            if (std::string(e.what()).find("CGI_TIMEOUT:") == 0) {
+                sendErrorResponse(client, 504, "Gateway Timeout", servers[0]->config);
+            } else {
+                sendErrorResponse(client, 500, "CGI Execution Failed", servers[0]->config);
+            }
+        }
+    } else {
+        sendErrorResponse(client, 403, "Unsupported CGI Extension", servers[0]->config);
     }
 }
 

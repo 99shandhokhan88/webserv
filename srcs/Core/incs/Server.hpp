@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/15 19:23:23 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/29 22:54:15 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,6 +112,15 @@ private:
     
     /** @brief Gestisce richieste GET (lettura file, directory listing) */
     void handleGetRequest(Client* client);
+    
+    
+    void handleRootRequest(Client* client, const LocationConfig& location, const std::string& path);
+    
+    
+    void handleDirectoryRequest(Client* client, const LocationConfig& location, const std::string& path);
+    
+    
+    void handleCgiRequest(Client* client, const LocationConfig& location);
     
     /** @brief Gestisce richieste POST (upload file, form data) */
     void handlePostRequest(Client* client);
