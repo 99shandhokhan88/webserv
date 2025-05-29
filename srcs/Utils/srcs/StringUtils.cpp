@@ -18,64 +18,6 @@
 #include "../../Config/incs/ServerConfig.hpp"
 
 
-// Trim leading and trailing whitespace from a string
-std::string StringUtils::trim(const std::string& str)
-{
-
-    size_t first = str.find_first_not_of(" \t\r\n");
-    
-    if (first == std::string::npos)
-        return  ("");
-
-    size_t last = str.find_last_not_of(" \t\r\n");
-
-    return  (str.substr(first, last - first + 1));
-    
-}
-
-
-// Split a string by a delimiter
-std::vector<std::string> StringUtils::split(const std::string& str, char delimiter)
-{
-    
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream iss(str); // Requires <sstream>
-
-    while (std::getline(iss, token, delimiter))
-        tokens.push_back(token);
-
-    return  (tokens);
-    
-}
-
-
-// Convert a string to lowercase
-std::string StringUtils::toLower(const std::string& str)
-{
-    std::string result = str;
-    
-    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-    
-    return  (result);
-}
-
-
-// Convert a string to uppercase
-std::string StringUtils::toUpper(const std::string& str)
-{
-
-    std::string result = str;
-    
-    std::transform(result.begin(), result.end(), result.begin(), ::toupper);
-    
-    return  (result);
-    
-}
-
-
-
-
 
 // Modify the extractBoundary method to be more robust
 std::string extractBoundary(const std::string& contentType) {

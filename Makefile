@@ -21,12 +21,8 @@ SRC = srcs/main.cpp \
       srcs/Config/srcs/LocationConfig.cpp \
       srcs/Core/srcs/Server.cpp \
       srcs/Core/srcs/Client.cpp \
-      srcs/Core/srcs/EventLoop.cpp \
-      srcs/Errors/srcs/ErrorHandler.cpp \
       srcs/HTTP/srcs/Request.cpp \
       srcs/HTTP/srcs/Response.cpp \
-      srcs/HTTP/srcs/RequestParser.cpp \
-      srcs/HTTP/srcs/ResponseGenerator.cpp \
       srcs/Utils/srcs/FileHandler.cpp \
       srcs/Utils/srcs/StringUtils.cpp \
       srcs/Utils/srcs/MimeTypes.cpp
@@ -39,7 +35,6 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g -O3 \
            -Isrcs/CGI/incs \
            -Isrcs/Config/incs \
            -Isrcs/Core/incs \
-           -Isrcs/Errors/incs \
            -Isrcs/HTTP/incs \
            -Isrcs/Utils/incs
 

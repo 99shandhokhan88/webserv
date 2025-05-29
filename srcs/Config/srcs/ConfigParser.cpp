@@ -75,10 +75,12 @@ void ConfigParser::parseServerBlock(std::ifstream& file)
             continue;
 
 if (line.find("location") != std::string::npos) {
+            std::cout << "DEBUG: Found location directive: '" << line << "'" << std::endl;
             // Extract location path from line
             std::istringstream iss(line);
             std::string keyword, path;
             iss >> keyword >> path;  // Get "location" and path
+            std::cout << "DEBUG: Parsed keyword='" << keyword << "', path='" << path << "'" << std::endl;
             
             // Remove any trailing '{' from path
             size_t brace_pos = path.find('{');
@@ -196,9 +198,17 @@ void ConfigParser::parseDirective(const std::string& line, ServerConfig& server)
         server.setServerName(name);
     }
     else if (key == "client_max_body_size") {
-        size_t size;
-        iss >> size;
+        std::string size_str;
+        iss >> size_str;
+        
+        // Remove semicolon if present
+        if (!size_str.empty() && size_str[size_str.size()-1] == ';') {
+            size_str.erase(size_str.size()-1, 1);
+        }
+        
+        size_t size = static_cast<size_t>(atoi(size_str.c_str()));
         server.setClientMaxBodySize(size);
+        std::cout << "DEBUG: Set client_max_body_size to " << size << " bytes" << std::endl;
     }
     else if (key == "error_page") {
         int code;
@@ -232,7 +242,9 @@ void ConfigParser::parseDirective(const std::string& line, LocationConfig& locat
     else if (key == "autoindex") {
         std::string value;
         iss >> value;
-        location.setAutoIndex(value == "on");
+        bool autoindex_enabled = (value == "on");
+        location.setAutoIndex(autoindex_enabled);
+        std::cout << "DEBUG: Set autoindex to " << (autoindex_enabled ? "true" : "false") << " for location" << std::endl;
     }
     else if (key == "allow_types") {
         std::string mime_type;

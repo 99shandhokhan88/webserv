@@ -187,15 +187,15 @@ echo "=================================================="
 
 # Create simple Python CGI script
 mkdir -p www/cgi-bin
-cat > www/cgi-bin/test.py << 'EOF'
+cat > www/cgi-bin/info.py << 'EOF'
 #!/usr/bin/env python3
 print("Content-Type: text/html\r")
 print("\r")
 print("<html><body><h1>CGI Test Success</h1></body></html>")
 EOF
-chmod +x www/cgi-bin/test.py
+chmod +x www/cgi-bin/info.py
 
-response=$(curl -s -i "$SERVER_URL/cgi-bin/test.py" 2>/dev/null)
+response=$(curl -s -i "$SERVER_URL/cgi-bin/info.py" 2>/dev/null)
 print_test "CGI script execution" "200" "$(get_status "$response")"
 
 # Create timeout CGI script

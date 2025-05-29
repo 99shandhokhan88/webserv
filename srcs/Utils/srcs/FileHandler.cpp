@@ -84,11 +84,6 @@ bool FileHandler::isDirectory(const std::string& path) {
     return S_ISDIR(buffer.st_mode);
 }
 
-std::string FileHandler::getDirectory(const std::string& path) {
-    size_t pos = path.find_last_of('/');
-    return (pos != std::string::npos) ? path.substr(0, pos) : "";
-}
-
 bool FileHandler::deleteFile(const std::string& path) {
     if (!fileExists(path)) return false;
     return remove(path.c_str()) == 0;
@@ -132,10 +127,9 @@ std::string FileHandler::sanitizePath(const std::string& path) {
         clean_path += c;
     }
     
-    // Remove trailing slash unless it's root
-    if (clean_path.length() > 1 && clean_path[clean_path.length()-1] == '/') {
-        clean_path.erase(clean_path.length()-1, 1);
-    }
+    // DON'T remove trailing slash for directory paths - this is needed for autoindex
+    // Only remove trailing slash for non-root paths if it's not intended to be a directory
+    // The server logic will handle directory detection and redirects properly
     
     return clean_path;
 }
@@ -208,11 +202,6 @@ bool FileHandler::exists(const std::string& path) {
     struct stat info;
     return stat(path.c_str(), &info) == 0;
 }
-
-bool FileHandler::isWritable(const std::string& path) {
-    return access(path.c_str(), W_OK) == 0;
-}
-
 
 bool FileHandler::isPathWithinRoot(const std::string& path, const std::string& root) {
     std::string absPath = getAbsolutePath(path);

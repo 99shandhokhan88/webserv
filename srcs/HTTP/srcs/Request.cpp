@@ -58,14 +58,6 @@ std::string Request::dechunk(const std::string& body) {
 
 
 
-
-
-
-
-
-
-
-
 void Request::parse(const char* data, size_t length) {
     raw_data.append(data, length);
 
@@ -94,7 +86,6 @@ void Request::parse(const char* data, size_t length) {
 }
 
 
-
 // Parse a header line
 void Request::parseHeaderLine(const std::string& line)
 {
@@ -120,37 +111,6 @@ void Request::parseHeaderLine(const std::string& line)
         
     }
 }
-
-
-
-
-// Setters
-void Request::setMethod(const std::string& _method) {
-    this->_method = _method;
-}
-
-void Request::setUri(const std::string& _uri) {
-    this->_uri = _uri;
-}
-
-void Request::setVersion(const std::string& _version) {
-    this->_version = _version;
-}
-
-void Request::setHeader(const std::string& key, const std::string& value) {
-    _headers[key] = value;
-}
-
-void Request::setBody(const std::string& _body) {
-    this->_body = _body;
-}
-
-
-
-
-
-
-
 
 
 void Request::parseRequestLine(const std::string& line) {

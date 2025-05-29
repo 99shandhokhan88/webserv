@@ -35,6 +35,10 @@ public:
         static const std::string empty;
         return empty;
     }
+    
+    bool hasHeader(const std::string& name) const {
+        return _headers.find(name) != _headers.end();
+    }
 
     const std::string& getMethod() const { return _method; }
     const std::string& getPath() const { return _path; }

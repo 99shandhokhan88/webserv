@@ -1,4 +1,3 @@
-
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -7,17 +6,102 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/19 18:05:17 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/05/15 22:08:18 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../incs/Client.hpp"
 #include "../incs/Server.hpp"
+#include "../../HTTP/incs/Response.hpp"
+#include "../../Config/incs/ServerConfig.hpp"
 #include <unistd.h>
 #include <cstring>
 #include <sys/socket.h>
 #include <errno.h>
 
+// ==================== DEFINIZIONE COSTANTI STATICHE ====================
+
+/** @brief Separatore header HTTP (\r\n\r\n) */
+const char* const Client::HTTP_HEADER_SEPARATOR = "\r\n\r\n";
+
+/** @brief Separatore linea HTTP (\r\n) */
+const char* const Client::HTTP_LINE_SEPARATOR = "\r\n";
+
+// ==================== IMPLEMENTAZIONE METODI HELPER PRIVATI ====================
+
+/**
+ * @brief Estrae il Content-Length dagli header HTTP
+ * @param headers Stringa contenente gli header HTTP
+ * @return Dimensione del body in bytes, 0 se non specificata
+ * 
+ * REFACTORING: Estratta da isRequestComplete() per migliorare leggibilità
+ * e riutilizzabilità del codice
+ */
+size_t Client::extractContentLength(const std::string& headers) const {
+    size_t pos = headers.find("Content-Length:");
+    if (pos == std::string::npos) {
+        return 0; // Header non trovato
+    }
+    
+    // Salta il ":" e gli spazi bianchi
+    pos = headers.find(':', pos) + 1;
+    while (pos < headers.size() && isspace(headers[pos])) {
+        pos++;
+    }
+    
+    // Trova la fine del numero (fino al primo non-digit)
+    size_t end = pos;
+    while (end < headers.size() && isdigit(headers[end])) {
+        end++;
+    }
+    
+    // Se non ci sono cifre, ritorna 0
+    if (pos == end) {
+        return 0;
+    }
+    
+    // Converte la sottostringa in numero
+    return static_cast<size_t>(atoi(headers.substr(pos, end - pos).c_str()));
+}
+
+/**
+ * @brief Verifica se la richiesta è di tipo GET o HEAD (senza body)
+ * @return true se la richiesta non dovrebbe avere un body
+ * 
+ * REFACTORING: Estratta da isRequestComplete() per semplificare la logica
+ * e migliorare la leggibilità del codice principale
+ */
+bool Client::isMethodWithoutBody() const {
+    std::string method_line = request_data.substr(0, request_data.find(HTTP_LINE_SEPARATOR));
+    return (method_line.find("GET") == 0 || method_line.find("HEAD") == 0);
+}
+
+/**
+ * @brief Valida la dimensione del body contro i limiti configurati
+ * @param content_length Dimensione dichiarata del body
+ * @param body_received Dimensione effettiva ricevuta
+ * @throws std::runtime_error se il body è troppo grande
+ * 
+ * REFACTORING: Estratta da isRequestComplete() per centralizzare i controlli
+ * di sicurezza e migliorare la manutenibilità
+ */
+void Client::validateBodySize(size_t content_length, size_t body_received) const {
+    // Controlla Content-Length dichiarato
+    if (content_length > DEFAULT_MAX_BODY_SIZE) {
+        std::cerr << "ERROR: Content-Length exceeds max body size: " << content_length 
+                 << " bytes (max: " << DEFAULT_MAX_BODY_SIZE << " bytes)" << std::endl;
+        throw std::runtime_error("REQUEST_ENTITY_TOO_LARGE");
+    }
+    
+    // Controlla dati effettivamente ricevuti
+    if (body_received > DEFAULT_MAX_BODY_SIZE) {
+        std::cerr << "ERROR: Received body exceeds max body size: " << body_received 
+                 << " bytes (max: " << DEFAULT_MAX_BODY_SIZE << " bytes)" << std::endl;
+        throw std::runtime_error("REQUEST_ENTITY_TOO_LARGE");
+    }
+}
+
+// ==================== IMPLEMENTAZIONE METODI PUBBLICI ====================
 
 // Updated parseRequest() method
 void Client::parseRequest() {
@@ -37,20 +121,17 @@ Client::Client(int client_fd) :
     request(),
     request_data() {}
 
+void Client::appendRequestData(const char* data, size_t length) {
+    request_data.append(data, length);
+}
 
+bool Client::shouldKeepAlive() const {
+    return keep_alive;
+}
 
-    void Client::appendRequestData(const char* data, size_t length) {
-        request_data.append(data, length);
-    }
-
-    
-    bool Client::shouldKeepAlive() const {
-        return keep_alive;
-    }
-    
-    void Client::setKeepAlive(bool value) {
-        keep_alive = value;
-    }
+void Client::setKeepAlive(bool value) {
+    keep_alive = value;
+}
 
 void Client::handleRequest(Server& server) {
     std::string data = readData();
@@ -93,32 +174,32 @@ void Client::handleRequest(Server& server) {
     }
 }
 
-
-// Modify readData() to ensure complete requests
+/**
+ * @brief Legge dati dal socket del client utilizzando buffer di dimensione configurabile
+ * @return Stringa contenente tutti i dati ricevuti
+ * @throws std::runtime_error se errore di lettura
+ * 
+ * REFACTORING: Sostituita costante magica 1024 con Client::BUFFER_SIZE
+ * per maggiore manutenibilità e configurabilità
+ */
 std::string Client::readData() {
-    char buffer[1024];
+    char buffer[BUFFER_SIZE];  // ✅ REFACTORING: Era 1024, ora usa costante
     ssize_t bytes_read;
 
     while ((bytes_read = recv(fd, buffer, sizeof(buffer), 0)) > 0) {
         request_data.append(buffer, bytes_read);
         
-        // Check for complete headers
-        if (request_data.find("\r\n\r\n") != std::string::npos)
-        {
-                size_t headers_end = request_data.find("\r\n\r\n");
-    std::string headers_part = request_data.substr(0, headers_end);
+        // Check for complete headers using constant
+        if (request_data.find(HTTP_HEADER_SEPARATOR) != std::string::npos) {
+            size_t headers_end = request_data.find(HTTP_HEADER_SEPARATOR);
+            std::string headers_part = request_data.substr(0, headers_end);
 
-    size_t content_length = 0;
-    size_t pos = headers_part.find("Content-Length:");
-    if (pos != std::string::npos) {
-        std::istringstream iss(headers_part.substr(pos + 15));
-        iss >> content_length;
-    }
+            size_t content_length = extractContentLength(headers_part);  // ✅ REFACTORING: Usa helper method
 
-    size_t total_length = headers_end + 4 + content_length;
-    if (request_data.size() >= total_length) {
-        break;  // Full request including body is received
-    }
+            size_t total_length = headers_end + 4 + content_length;
+            if (request_data.size() >= total_length) {
+                break;  // Full request including body is received
+            }
         }
     }
     
@@ -129,34 +210,43 @@ std::string Client::readData() {
     return request_data;
 }
 
-
-// Check if we've received the full request based on Content-Length
+/**
+ * @brief Verifica completezza richiesta HTTP con controlli di sicurezza migliorati
+ * @return true se la richiesta è completa e valida
+ * @throws std::runtime_error se body troppo grande
+ * 
+ * REFACTORING: 
+ * - Sostituita costante magica 1048576 con DEFAULT_MAX_BODY_SIZE
+ * - Utilizzate costanti per separatori HTTP
+ * - Estratte funzioni helper per migliorare leggibilità
+ * - Semplificata logica principale
+ */
 bool Client::isRequestComplete() {
-        // Use request_data instead of raw_request
-
-    size_t header_end = request_data.find("\r\n\r\n");
+    // Verifica presenza header completi
+    size_t header_end = request_data.find(HTTP_HEADER_SEPARATOR);
     if (header_end == std::string::npos) {
         return false; // Headers not complete yet
     }
     
-    // For GET and HEAD requests without body
-    std::string method_line = request_data.substr(0, request_data.find("\r\n"));
-    if (method_line.find("GET") == 0 || method_line.find("HEAD") == 0) {
+    // ✅ REFACTORING: Usa helper method per verificare metodi senza body
+    if (isMethodWithoutBody()) {
         return true;
     }
     
-    // Extract headers
+    // Estrai header e verifica Content-Length
     std::string headers = request_data.substr(0, header_end);
+    size_t content_length = extractContentLength(headers);  // ✅ REFACTORING: Usa helper method
     
-    // Check Content-Length
-    size_t content_length = getContentLength(headers);
     if (content_length == 0) {
         return true; // No content expected
     }
     
-    // Check if we have the full body
+    // Calcola dimensioni body
     size_t body_start = header_end + 4; // Skip \r\n\r\n
     size_t body_received = request_data.size() - body_start;
+    
+    // ✅ REFACTORING: Usa helper method per validazione sicurezza
+    validateBodySize(content_length, body_received);
     
     std::cout << "DEBUG: Content-Length: " << content_length 
               << ", Body received: " << body_received << " bytes" << std::endl;

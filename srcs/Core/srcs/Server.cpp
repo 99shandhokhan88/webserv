@@ -18,7 +18,9 @@
 #include "../../Utils/incs/FileHandler.hpp"
 #include "../../Utils/incs/MimeTypes.hpp"
 #include "../../CGI/incs/CGIExecutor.hpp"
-#include "../../Utils/incs/StringUtils.hpp" 
+#include "../../Utils/incs/StringUtils.hpp"
+#include <ctime>
+#include <sys/stat.h> 
 
 // Static member initialization
 std::vector<Server*> Server::servers;
@@ -56,134 +58,300 @@ Server::~Server() {
     }
 }
 
+/**
+ * @brief Configura e inizializza il socket del server
+ * @throws std::runtime_error se fallisce qualsiasi operazione di setup
+ * 
+ * Questa funzione esegue tutti i passaggi necessari per creare e configurare
+ * un socket server TCP pronto per accettare connessioni:
+ * 
+ * 1. Creazione socket TCP/IP
+ * 2. Configurazione opzioni socket (riuso indirizzo)
+ * 3. Binding all'indirizzo e porta specificati
+ * 4. Attivazione modalità listen per accettare connessioni
+ * 5. Configurazione modalità non-bloccante
+ * 6. Registrazione nel sistema di polling globale
+ */
 void Server::setupSocket() {
-    // Socket creation and setup
+    // Fase 1: Creazione socket TCP/IP
+    // AF_INET = IPv4, SOCK_STREAM = TCP, 0 = protocollo di default
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         throw std::runtime_error("socket() failed: " + std::string(strerror(errno)));
 
-    // Socket options
+    // Fase 2: Configurazione opzioni socket
+    // SO_REUSEADDR permette di riutilizzare immediatamente l'indirizzo
+    // dopo la chiusura del server (evita "Address already in use")
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
         throw std::runtime_error("setsockopt() failed: " + std::string(strerror(errno)));
 
-    // Address configuration
-    memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(config.getPort());
+    // Fase 3: Configurazione indirizzo di binding
+    memset(&address, 0, sizeof(address));           // Azzera la struttura
+    address.sin_family = AF_INET;                   // Famiglia IPv4
+    address.sin_addr.s_addr = INADDR_ANY;          // Ascolta su tutte le interfacce
+    address.sin_port = htons(config.getPort());    // Porta in network byte order
 
-    // Bind and listen
+    // Fase 4: Binding del socket all'indirizzo
+    // Associa il socket all'indirizzo IP e porta specificati
     if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0)
         throw std::runtime_error("bind() failed: " + std::string(strerror(errno)));
 
+    // Fase 5: Attivazione modalità listen
+    // SOMAXCONN = massimo numero di connessioni in coda
     if (listen(server_fd, SOMAXCONN) < 0)
         throw std::runtime_error("listen() failed: " + std::string(strerror(errno)));
 
-    // Non-blocking mode
+    // Fase 6: Configurazione modalità non-bloccante
+    // Permette operazioni I/O asincrone senza bloccare il thread
     if (fcntl(server_fd, F_SETFL, O_NONBLOCK) == -1)
         throw std::runtime_error("fcntl() failed: " + std::string(strerror(errno)));
 
-    // Add to server list
-    servers.push_back(this);
-    addPollFD(server_fd, POLLIN);
+    // Fase 7: Registrazione nel sistema globale
+    servers.push_back(this);                        // Aggiunge alla lista server
+    addPollFD(server_fd, POLLIN);                  // Monitora eventi di lettura
 
     std::cout << "Server started on port " << config.getPort() << " (FD: " << server_fd << ")" << std::endl;
 }
 
-// Replace the handleClient method with this improved version
+/**
+ * @brief Gestisce la comunicazione con un client connesso
+ * @param client_fd File descriptor del client da gestire
+ * 
+ * Questa funzione implementa il ciclo completo di gestione di un client:
+ * 
+ * 1. Lettura dati dal socket in modalità non-bloccante
+ * 2. Accumulo dati nel buffer del client
+ * 3. Verifica completezza della richiesta HTTP
+ * 4. Parsing della richiesta quando completa
+ * 5. Elaborazione tramite processRequest()
+ * 6. Gestione keep-alive o chiusura connessione
+ * 7. Gestione errori e cleanup
+ * 
+ * La funzione gestisce anche:
+ * - Ricezioni parziali (dati frammentati)
+ * - Errori di parsing HTTP
+ * - Disconnessioni improvvise
+ * - Limiti di dimensione del body
+ * 
+ * REFACTORING: Migliorati i nomi delle variabili per maggiore chiarezza
+ */
 void Server::handleClient(int client_fd) {
-    Client& client = clients[client_fd];
-    std::vector<char> buffer(4096);  // Increase buffer size for larger chunks
+    Client& current_client = clients[client_fd];  // ✅ REFACTORING: Era 'client', ora più specifico
+    std::vector<char> read_buffer(4096);          // ✅ REFACTORING: Era 'buffer', ora più descrittivo
     
-    ssize_t bytes_read;
-    while ((bytes_read = recv(client_fd, buffer.data(), buffer.size(), 0)) > 0) {
-        client.appendRequestData(buffer.data(), bytes_read);
+    ssize_t bytes_received_count;  // ✅ REFACTORING: Era 'bytes_read', ora più esplicito
+    
+    // Loop di lettura: continua finché ci sono dati disponibili
+    while ((bytes_received_count = recv(client_fd, read_buffer.data(), read_buffer.size(), 0)) > 0) {
+        // Accumula i dati ricevuti nel buffer del client
+        current_client.appendRequestData(read_buffer.data(), bytes_received_count);
         
         try {
-            // Only try to parse and process if the request is complete
-            if (client.isRequestComplete()) {
-                client.parseRequest();
+            // Verifica se abbiamo ricevuto una richiesta HTTP completa
+            if (current_client.isRequestComplete()) {
+                // Parsing della richiesta HTTP (metodo, URL, header, body)
+                current_client.parseRequest();
                 
-                processRequest(&client);
-                if (!client.shouldKeepAlive()) {
+                // Elaborazione della richiesta e generazione risposta
+                processRequest(&current_client);
+                
+                // Gestione keep-alive: se disabilitato, chiudi connessione
+                if (!current_client.shouldKeepAlive()) {
                     removeClient(client_fd);
                     return;
                 }
-                client.reset();
+                
+                // Reset per la prossima richiesta sulla stessa connessione
+                current_client.reset();
             } else {
-                // Not complete yet, continue reading
+                // Richiesta incompleta: esci dal loop e aspetta più dati
                 break;
             }
-        } catch (const std::exception& e) {
-            std::cerr << "Request error: " << e.what() << std::endl;
-            sendErrorResponse(&client, 400, "Bad Request", servers[0]->config);
+        } catch (const std::exception& parsing_exception) {  // ✅ REFACTORING: Era 'e', ora più descrittivo
+            std::cerr << "Request error: " << parsing_exception.what() << std::endl;
+            
+            // Gestione errori specifici
+            std::string error_message = parsing_exception.what();  // ✅ REFACTORING: Era 'error_msg', ora completo
+            if (error_message == "REQUEST_ENTITY_TOO_LARGE") {
+                // Body troppo grande: errore 413
+                sendErrorResponse(&current_client, 413, "Request Entity Too Large", servers[0]->config);
+            } else {
+                // Altri errori di parsing: errore 400
+                sendErrorResponse(&current_client, 400, "Bad Request", servers[0]->config);
+            }
             removeClient(client_fd);
             return;
         }
     }
 
-    // Handle connection close or error
-    if (bytes_read == 0) {
+    // Gestione fine lettura o errori
+    if (bytes_received_count == 0) {
+        // Client ha chiuso la connessione normalmente
         removeClient(client_fd);
-    } else if (bytes_read < 0) {
+    } else if (bytes_received_count < 0) {
+        // Errore di lettura: controlla se è temporaneo
         if (errno != EWOULDBLOCK && errno != EAGAIN) {
+            // Errore permanente: chiudi connessione
             std::cerr << "recv() error: " << strerror(errno) << std::endl;
             removeClient(client_fd);
         }
+        // EWOULDBLOCK/EAGAIN: nessun dato disponibile, normale in modalità non-bloccante
     }
 }
 
+/**
+ * @brief Ottiene la pagina di errore personalizzata per un codice di errore
+ * @param errorCode Codice di errore HTTP (es. 404, 500, etc.)
+ * @return Contenuto HTML della pagina di errore
+ * 
+ * Funzionamento:
+ * 1. Cerca una pagina di errore personalizzata nella configurazione
+ * 2. Se trovata, legge il file dal filesystem
+ * 3. Se non trovata o errore di lettura, genera una pagina di default
+ * 
+ * Le pagine personalizzate permettono di mantenere la coerenza
+ * visiva del sito anche nelle pagine di errore.
+ * 
+ * REFACTORING: Migliorati i nomi delle variabili per maggiore chiarezza
+ */
 std::string Server::getErrorPage(int errorCode) const {
-    const std::map<int, std::string>& errorPages = config.getErrorPages();
-    std::map<int, std::string>::const_iterator it = errorPages.find(errorCode);
+    // Ottiene la mappa delle pagine di errore dalla configurazione
+    const std::map<int, std::string>& configured_error_pages = config.getErrorPages();  // ✅ REFACTORING: Era 'errorPages', ora più descrittivo
+    std::map<int, std::string>::const_iterator error_page_iterator = configured_error_pages.find(errorCode);  // ✅ REFACTORING: Era 'it', ora più esplicito
 
-    if (it != errorPages.end()) {
+    // Se esiste una pagina personalizzata per questo errore
+    if (error_page_iterator != configured_error_pages.end()) {
         try {
-            return FileHandler::readFile(config.getRoot() + it->second);
-        } catch (const std::exception& e) {
-            std::cerr << "Error reading error page: " << e.what() << std::endl;
+            // Legge il file della pagina di errore personalizzata
+            return FileHandler::readFile(config.getRoot() + error_page_iterator->second);
+        } catch (const std::exception& file_read_exception) {  // ✅ REFACTORING: Era 'e', ora più descrittivo
+            std::cerr << "Error reading error page: " << file_read_exception.what() << std::endl;
+            // Se fallisce la lettura, continua con la pagina di default
         }
     }
 
-    // Default error page
-    std::stringstream ss;
-    ss << "<html><body><h1>" << errorCode << " Error</h1></body></html>";
-    return ss.str();
+    // Genera una pagina di errore di default semplice
+    std::stringstream default_error_page_stream;  // ✅ REFACTORING: Era 'ss', ora più descrittivo
+    default_error_page_stream << "<html><body><h1>" << errorCode << " Error</h1></body></html>";
+    return default_error_page_stream.str();
 }
 
-
+/**
+ * @brief Estrae la lunghezza del contenuto dagli header HTTP
+ * @param headers Stringa contenente tutti gli header HTTP
+ * @return Lunghezza del contenuto in bytes, 0 se non specificata
+ * 
+ * Questa funzione helper cerca l'header "Content-Length" e ne estrae
+ * il valore numerico. È essenziale per:
+ * - Sapere quanto body leggere nelle richieste POST
+ * - Verificare la completezza delle richieste
+ * - Gestire correttamente il buffering
+ * 
+ * REFACTORING: Migliorati i nomi delle variabili per maggiore chiarezza
+ */
 size_t getContentLength(const std::string& headers) {
-    size_t pos = headers.find("Content-Length:");
-    if (pos == std::string::npos) {
+    // Cerca l'header "Content-Length:" (case-sensitive)
+    size_t content_length_position = headers.find("Content-Length:");  // ✅ REFACTORING: Era 'pos', ora più descrittivo
+    if (content_length_position == std::string::npos) {
+        return 0;  // Header non trovato
+    }
+    
+    // Salta il ":" e gli spazi bianchi
+    content_length_position = headers.find(':', content_length_position) + 1;
+    while (content_length_position < headers.size() && isspace(headers[content_length_position])) {
+        content_length_position++;
+    }
+    
+    // Trova la fine del numero (fino al primo non-digit)
+    size_t number_end_position = content_length_position;  // ✅ REFACTORING: Era 'end', ora più esplicito
+    while (number_end_position < headers.size() && isdigit(headers[number_end_position])) {
+        number_end_position++;
+    }
+    
+    // Se non ci sono cifre, ritorna 0
+    if (content_length_position == number_end_position) {
         return 0;
     }
     
-    pos = headers.find(':', pos) + 1;
-    while (pos < headers.size() && isspace(headers[pos])) {
-        pos++;
-    }
-    
-    size_t end = pos;
-    while (end < headers.size() && isdigit(headers[end])) {
-        end++;
-    }
-    
-    if (pos == end) {
-        return 0;
-    }
-    
-    return static_cast<size_t>(atoi(headers.substr(pos, end - pos).c_str()));
+    // Converte la sottostringa in numero
+    return static_cast<size_t>(atoi(headers.substr(content_length_position, number_end_position - content_length_position).c_str()));
 }
 
-void Server::sendFileResponse(Client* client, const std::string& path) {
-    std::string content = FileHandler::readFile(path);
+/**
+ * @brief Invia un file come risposta HTTP al client
+ * @param client Client destinatario della risposta
+ * @param path Percorso del file da inviare
+ * @param isHeadRequest true per richieste HEAD (solo header, no body)
+ * 
+ * Questa funzione gestisce l'invio di file statici:
+ * 
+ * 1. Lettura del contenuto del file (se non HEAD request)
+ * 2. Determinazione del tipo MIME basato sull'estensione
+ * 3. Calcolo della dimensione del file per Content-Length
+ * 4. Generazione header HTTP appropriati
+ * 5. Invio della risposta completa
+ * 
+ * Gestisce correttamente:
+ * - Richieste HEAD (solo header)
+ * - Tipi MIME automatici
+ * - Header standard HTTP/1.1
+ * - Gestione errori file non trovati
+ */
+void Server::sendFileResponse(Client* client, const std::string& path, bool isHeadRequest) {
+    std::string content;
+    
+    // Per richieste non-HEAD, legge il contenuto del file
+    if (!isHeadRequest) {
+        content = FileHandler::readFile(path);
+    } else {
+        // Per richieste HEAD, verifica solo che il file esista
+        struct stat fileStat;
+        if (stat(path.c_str(), &fileStat) == 0) {
+            content = ""; // Contenuto vuoto per HEAD
+        } else {
+            // File non esiste: invia errore 404
+            sendErrorResponse(client, 404, "Not Found", servers[0]->config);
+            return;
+        }
+    }
+    
+    // Determina il tipo MIME basato sull'estensione del file
     std::string mimeType = MimeTypes::getType(path);
+    
+    // Calcola la dimensione del contenuto per l'header Content-Length
+    size_t contentLength = 0;
+    if (!isHeadRequest) {
+        contentLength = content.size();
+    } else {
+        // Per HEAD, ottiene la dimensione reale del file
+        struct stat fileStat;
+        if (stat(path.c_str(), &fileStat) == 0) {
+            contentLength = fileStat.st_size;
+        }
+    }
 
+    // Costruzione della risposta HTTP
     std::string response = "HTTP/1.1 200 OK\r\n";
     response += "Content-Type: " + mimeType + "\r\n";
-    response += "Content-Length: " + toString(content.size()) + "\r\n";
-    response += "\r\n" + content;
+    response += "Content-Length: " + toString(contentLength) + "\r\n";
+    response += "Server: webserv/1.0\r\n";
+    
+    // Aggiunge header Date con timestamp corrente
+    time_t now = time(0);
+    char* dt = ctime(&now);
+    std::string dateStr(dt);
+    if (!dateStr.empty() && dateStr[dateStr.length()-1] == '\n') {
+        dateStr.erase(dateStr.length()-1);  // Rimuove newline finale
+    }
+    response += "Date: " + dateStr + "\r\n";
+    response += "\r\n";  // Linea vuota che separa header da body
+    
+    // Aggiunge il contenuto solo per richieste non-HEAD
+    if (!isHeadRequest) {
+        response += content;
+    }
 
+    // Invia la risposta completa al client
     send(client->fd, response.c_str(), response.size(), 0);
 }
 
@@ -298,16 +466,27 @@ void Server::handleGetRequest(Client* client) {
         std::cout << "DEBUG: Location path: " << location.getPath() << std::endl;
         std::cout << "DEBUG: Full file path: " << path << std::endl;
 
-        // Handle root path redirect
+        // Handle root path - serve index directly instead of redirect
         if (client->request.getPath() == "/") {
-            std::string redirectUrl = "/index.html";
-            std::string redirectContent = "<html><body>Redirecting to <a href=\"" + redirectUrl + "\">" + redirectUrl + "</a></body></html>";
-            std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
-            response += "Location: " + redirectUrl + "\r\n";
-            response += "Content-Length: " + toString(redirectContent.size()) + "\r\n";
-            response += "\r\n" + redirectContent;
-            send(client->fd, response.c_str(), response.size(), 0);
-            return;
+            std::string indexPath = path + location.getIndex();
+            std::cout << "DEBUG: Root path requested, checking index: " << indexPath << std::endl;
+            if (FileHandler::fileExists(indexPath)) {
+                std::cout << "DEBUG: Index file found, serving: " << indexPath << std::endl;
+                sendFileResponse(client, indexPath, false);
+                return;
+            } else {
+                std::cout << "DEBUG: Index file not found, checking autoindex..." << std::endl;
+                // If no index file and autoindex is enabled, show directory listing
+                if (location.getAutoIndex()) {
+                    std::cout << "DEBUG: Autoindex enabled for root, showing directory listing" << std::endl;
+                    handleDirectoryListing(client, path);
+                    return;
+                } else {
+                    std::cout << "DEBUG: Autoindex disabled for root, sending 403" << std::endl;
+                    sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
+                    return;
+                }
+            }
         }
 
         // Verifica speciale per script in /cgi-bin/
@@ -335,9 +514,6 @@ void Server::handleGetRequest(Client* client) {
                 } else if (ext == ".php") {
                     interpreter = "/usr/bin/php";
                     std::cout << "DEBUG: Using hardcoded PHP interpreter: " << interpreter << std::endl;
-                } else if (ext == ".ts") {
-                    interpreter = "/home/vzashev/.nvm/versions/node/v16.20.2/bin/ts-node";
-                    std::cout << "DEBUG: Using hardcoded TypeScript interpreter: " << interpreter << std::endl;
                 }
                 
                 if (!interpreter.empty()) {
@@ -452,11 +628,15 @@ void Server::handleGetRequest(Client* client) {
             // Se il percorso termina già con /, mostra il directory listing o index
             else {
                 std::cout << "DEBUG: Path ends with slash - should show listing or index" << std::endl;
+                std::cout << "DEBUG: Selected location path: '" << location.getPath() << "'" << std::endl;
+                std::cout << "DEBUG: location.getAutoIndex() = " << (location.getAutoIndex() ? "true" : "false") << std::endl;
+                
                 // Try to serve index file
                 std::string indexPath = path + location.getIndex();
+                std::cout << "DEBUG: Checking for index file: " << indexPath << std::endl;
                 if (FileHandler::fileExists(indexPath)) {
                     std::cout << "DEBUG: Index file found, serving: " << indexPath << std::endl;
-                    sendFileResponse(client, indexPath);
+                    sendFileResponse(client, indexPath, false);
                 } 
                 // Se non c'è un index file e autoindex è attivo, mostra il listing
                 else if (location.getAutoIndex()) {
@@ -464,6 +644,8 @@ void Server::handleGetRequest(Client* client) {
                     handleDirectoryListing(client, path);
                 } else {
                     std::cout << "DEBUG: No index file and autoindex disabled - sending 403" << std::endl;
+                    std::cout << "DEBUG: location.getAutoIndex() returned: " << (location.getAutoIndex() ? "true" : "false") << std::endl;
+                    std::cout << "DEBUG: Location path: '" << location.getPath() << "'" << std::endl;
                     sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
                 }
                 return;
@@ -627,10 +809,29 @@ void Server::handlePostRequest(Client* client) {
                     return;
                 }
             }
+            
+            // Check max body size limit
+            size_t maxBodySize = servers[0]->config.getClientMaxBodySize();
+            if (static_cast<size_t>(contentLength) > maxBodySize) {
+                std::cerr << "ERROR: Request body too large: " << contentLength 
+                         << " bytes (max: " << maxBodySize << " bytes)" << std::endl;
+                sendErrorResponse(client, 413, "Request Entity Too Large", servers[0]->config);
+                return;
+            }
+        }
+        
+        // Check the request body size as well (in case Content-Length is missing)
+        const std::string& requestBody = client->request.getBody();
+        size_t maxBodySize = servers[0]->config.getClientMaxBodySize();
+        std::cerr << "DEBUG: getClientMaxBodySize() returned: " << maxBodySize << " bytes" << std::endl;
+        if (requestBody.size() > maxBodySize) {
+            std::cerr << "ERROR: Request body too large: " << requestBody.size() 
+                     << " bytes (max: " << maxBodySize << " bytes)" << std::endl;
+            sendErrorResponse(client, 413, "Request Entity Too Large", servers[0]->config);
+            return;
         }
         
         // Check the request body
-        const std::string& requestBody = client->request.getBody();
         if (requestBody.empty()) {
             std::cerr << "WARNING: Empty request body received" << std::endl;
             
@@ -656,7 +857,7 @@ void Server::handlePostRequest(Client* client) {
             
             std::string boundary = extractBoundary(contentType);
             parseMultipartBody(client->request.getBody(), boundary, uploadDir);
-            sendResponse(client, 201, "Multipart file uploaded successfully");
+            sendResponse(client, 200, "Multipart file uploaded successfully");
             return;
         }
         
@@ -676,7 +877,7 @@ void Server::handlePostRequest(Client* client) {
                 std::string successContent = "<html><body><h1>Binary Data Received</h1>";
                 successContent += "<p>Your binary data has been successfully saved.</p>";
                 successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
-                sendResponse(client, 201, successContent);
+                sendResponse(client, 200, successContent);
             } else {
                 sendErrorResponse(client, 500, "Failed to save binary data", servers[0]->config);
             }
@@ -710,7 +911,7 @@ void Server::handlePostRequest(Client* client) {
                 std::string successContent = "<html><body><h1>Form Data Received</h1>";
                 successContent += "<p>Your form has been successfully submitted.</p>";
                 successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
-                sendResponse(client, 201, successContent);
+                sendResponse(client, 200, successContent);
             } else {
                 sendErrorResponse(client, 500, "Failed to process form data", servers[0]->config);
             }
@@ -732,7 +933,7 @@ void Server::handlePostRequest(Client* client) {
                 std::string successContent = "<html><body><h1>Text Received</h1>";
                 successContent += "<p>Your text has been successfully saved.</p>";
                 successContent += "<p><a href=\"/\">Return to home</a></p></body></html>";
-                sendResponse(client, 201, successContent);
+                sendResponse(client, 200, successContent);
             } else {
                 sendErrorResponse(client, 500, "Failed to save text data", servers[0]->config);
             }
@@ -1003,7 +1204,7 @@ void Server::processRequest(Client* client) {
             const std::vector<std::string>& allowedMethods = location.getAllowedMethods();
             
             // Check if method is implemented by server
-            bool isImplementedMethod = (method == "GET" || method == "POST" || method == "DELETE" || method == "HEAD" || method == "OPTIONS");
+            bool isImplementedMethod = (method == "GET" || method == "POST" || method == "DELETE" || method == "HEAD" || method == "OPTIONS" || method == "PUT" || method == "PATCH");
             
             if (!isImplementedMethod) {
                 // 501 Not Implemented for unknown methods

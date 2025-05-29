@@ -9,8 +9,6 @@
             --python-color: #2196F3;
             --shell-color: #FF5722;
             --php-color: #9C27B0;
-            --cpp-color: #00BCD4;
-            --ts-color: #3178c6;
         }
         
         body {
@@ -77,8 +75,6 @@
         .python { border-color: var(--python-color); }
         .shell { border-color: var(--shell-color); }
         .php { border-color: var(--php-color); }
-        .cpp { border-color: var(--cpp-color); }
-        .typescript { border-color: var(--ts-color); }
         
         .cgi-title {
             font-size: 24px;
@@ -136,8 +132,6 @@
         .python .test-button { background: var(--python-color); }
         .shell .test-button { background: var(--shell-color); }
         .php .test-button { background: var(--php-color); }
-        .cpp .test-button { background: var(--cpp-color); }
-        .typescript .test-button { background: var(--ts-color); }
         
         footer {
             text-align: center;
@@ -152,7 +146,7 @@
     <div class="container">
         <header>
             <h1>CGI Implementations</h1>
-            <p>Test different CGI implementations (Python, Bash, C++, ...). Il server ora seleziona automaticamente l'interprete corretto in base all'estensione dello script!</p>
+            <p>Test different CGI implementations (Python, Shell, PHP). Il server seleziona automaticamente l'interprete corretto in base all'estensione dello script!</p>
             <a href="/index.html" class="home-button">Return to Home</a>
         </header>
 
@@ -168,12 +162,12 @@
                 <div class="features">
                     <ul>
                         <li>System information display</li>
-                        <li>Form data processing</li>
-                        <li>File uploads</li>
                         <li>Environment variables</li>
+                        <li>Request details</li>
+                        <li>Interactive dashboard</li>
                     </ul>
                 </div>
-                <a href="/cgi-bin/test.py" class="test-button">Test Python CGI</a>
+                <a href="/cgi-bin/info.py" class="test-button">Test Python CGI</a>
             </div>
 
             <div class="cgi-card shell">
@@ -182,17 +176,17 @@
                     Shell CGI
                 </div>
                 <div class="cgi-description">
-                    Bash shell implementation with system command access
+                    Matrix-style terminal interface with system commands
                 </div>
                 <div class="features">
                     <ul>
-                        <li>System commands</li>
-                        <li>Environment info</li>
-                        <li>File operations</li>
-                        <li>Process management</li>
+                        <li>Matrix terminal theme</li>
+                        <li>System commands output</li>
+                        <li>Environment variables</li>
+                        <li>Hacker-style interface</li>
                     </ul>
                 </div>
-                <a href="/cgi-bin/test.sh" class="test-button">Test Shell CGI</a>
+                <a href="/cgi-bin/info.sh" class="test-button">Test Shell CGI</a>
             </div>
 
             <div class="cgi-card php">
@@ -201,85 +195,22 @@
                     PHP CGI
                 </div>
                 <div class="cgi-description">
-                    PHP implementation with server information display
+                    Epic easter egg hunt with multiple hidden features
                 </div>
                 <div class="features">
                     <ul>
-                        <li>PHP info display</li>
-                        <li>Form processing</li>
-                        <li>Session handling</li>
-                        <li>Database access</li>
+                        <li>Konami Code activation</li>
+                        <li>Matrix & Rainbow modes</li>
+                        <li>Secret messages</li>
+                        <li>Interactive easter eggs</li>
                     </ul>
                 </div>
-                <a href="/cgi-bin/test.php" class="test-button">Test PHP CGI</a>
-            </div>
-
-            <div class="cgi-card cpp">
-                <div class="cgi-title">
-                    <span>🔧</span>
-                    C++ CGI
-                </div>
-                <div class="cgi-description">
-                    High-performance C++ implementation with system integration
-                </div>
-                <div class="features">
-                    <ul>
-                        <li>System statistics</li>
-                        <li>Memory management</li>
-                        <li>Process info</li>
-                        <li>Binary operations</li>
-                    </ul>
-                </div>
-                <a href="/cgi-bin/test.cgi" class="test-button">Test C++ CGI</a>
-            </div>
-
-            <div class="cgi-card typescript">
-                <div class="cgi-title">
-                    <span>📘</span>
-                    TypeScript CGI
-                </div>
-                <div class="cgi-description">
-                    Modern TypeScript implementation with type safety (if enabled on server)
-                </div>
-                <div class="features">
-                    <ul>
-                        <li>Type checking</li>
-                        <li>Modern syntax</li>
-                        <li>Async operations</li>
-                        <li>Error handling</li>
-                    </ul>
-                </div>
-                <a href="/cgi-bin/test.ts" class="test-button">Test TypeScript CGI</a>
-            </div>
-        </div>
-
-        <div class="test-section" style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
-            <h2 style="color: #333; margin-bottom: 15px;">🧪 Test Scripts Multi-Linguaggio</h2>
-            <p>Verifica la nuova implementazione CGI multi-linguaggio con questi script leggeri:</p>
-            
-            <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
-                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-top: 3px solid #2196F3;">
-                    <h3>🐍 Python</h3>
-                    <p>Mostra variabili d'ambiente e informazioni di sistema</p>
-                    <a href="/cgi-bin/info.py" style="display: inline-block; padding: 8px 15px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px;">Test Python Info</a>
-                </div>
-                
-                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-top: 3px solid #FF5722;">
-                    <h3>🐚 Bash</h3>
-                    <p>Mostra variabili d'ambiente e informazioni di sistema</p>
-                    <a href="/cgi-bin/info.sh" style="display: inline-block; padding: 8px 15px; background: #FF5722; color: white; text-decoration: none; border-radius: 4px;">Test Bash Info</a>
-                </div>
-                
-                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-top: 3px solid #00BCD4;">
-                    <h3>🔧 C</h3>
-                    <p>Mostra variabili d'ambiente e informazioni di sistema</p>
-                    <a href="/cgi-bin/info.cgi" style="display: inline-block; padding: 8px 15px; background: #00BCD4; color: white; text-decoration: none; border-radius: 4px;">Test C Info</a>
-                </div>
+                <a href="/cgi-bin/info.php" class="test-button">Test PHP CGI</a>
             </div>
         </div>
 
         <footer>
-            <p>CGI Test Interface - All implementations</p>
+            <p>CGI Test Interface - Python, Shell & PHP implementations</p>
         </footer>
     </div>
 </body>

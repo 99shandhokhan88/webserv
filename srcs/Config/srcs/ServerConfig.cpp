@@ -102,7 +102,11 @@ ServerConfig::ServerConfig() :
     root(""),
     index("index.html") {}
 
-ServerConfig::ServerConfig(const std::string& configFilePath) : port(8080), root(""), index("") {
+ServerConfig::ServerConfig(const std::string& configFilePath) : 
+    port(8080), 
+    client_max_body_size(1048576), // 1MB default - FIXED!
+    root(""), 
+    index("") {
     loadConfig(configFilePath);
 }
 
@@ -249,6 +253,7 @@ void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::stri
         std::istringstream iss(line);
         std::string key;
         iss >> key;
+        std::cout << "DEBUG: Parsing location directive: key='" << key << "', line='" << line << "'" << std::endl;
 
         if (key == "allow_upload") {
             std::string value;
@@ -302,6 +307,17 @@ void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::stri
             std::cout << "DEBUG: Processing allow_delete with value: '" << value << "'" << std::endl;
             location.setAllowDelete(value == "on");
             std::cout << "DEBUG: Set allow_delete to " << (value == "on") << std::endl;
+        }
+        else if (key == "autoindex") {
+            std::string value;
+            iss >> value;
+            // Remove any trailing semicolon
+            if (!value.empty() && value[value.length()-1] == ';') {
+                value.erase(value.length()-1);
+            }
+            bool autoindex_enabled = (value == "on");
+            location.setAutoIndex(autoindex_enabled);
+            std::cout << "DEBUG: Set autoindex to " << (autoindex_enabled ? "true" : "false") << " for location '" << path << "'" << std::endl;
         }
         else if (key == "allow_methods") {
             std::string method;

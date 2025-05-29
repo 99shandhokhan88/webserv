@@ -10,36 +10,66 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-
+/**
+ * @file main.cpp
+ * @brief Punto di ingresso principale del webserver
+ * 
+ * Questo file contiene la funzione main che:
+ * 1. Valida gli argomenti della riga di comando
+ * 2. Carica il file di configurazione
+ * 3. Inizializza e avvia il server
+ * 4. Gestisce gli errori fatali
+ */
 
 #include <iostream>
 #include <stdexcept>
-#include "ServerConfig.hpp"
-#include "Server.hpp" // Include your Server class
+#include "ServerConfig.hpp"  // Classe per la gestione della configurazione
+#include "Server.hpp"        // Classe principale del server
 
+/**
+ * @brief Funzione principale del programma
+ * @param argc Numero di argomenti della riga di comando
+ * @param argv Array degli argomenti della riga di comando
+ * @return 0 se successo, 1 se errore
+ * 
+ * Flusso di esecuzione:
+ * 1. Controlla che sia stato fornito esattamente un file di configurazione
+ * 2. Carica la configurazione dal file specificato
+ * 3. Crea un'istanza del server con la configurazione caricata
+ * 4. Avvia il server ed entra nel loop degli eventi
+ */
 int main(int argc, char **argv) {
+    // Controllo argomenti: deve essere fornito esattamente un file di configurazione
     if (argc != 2)
     {
         std::cerr << "Usage: " << argv[0] << " <config_file>" << std::endl;
+        std::cerr << "Esempio: ./webserv configs/default.conf" << std::endl;
         return (1);
     }
     else
     {
         try
         {
-            // Load config file
+            // Fase 1: Caricamento della configurazione
+            // Legge e valida il file di configurazione specificato
             ServerConfig config(argv[1]);
 
-            // Initialize and start the server
+            // Fase 2: Inizializzazione del server
+            // Crea il server con la configurazione caricata
             Server server(config);
-            server.run();   // Start & Enter the event loop
+            
+            // Fase 3: Avvio del server
+            // Entra nel loop principale degli eventi (blocking call)
+            server.run();
         }
         catch (const std::exception& e)
         {
+            // Gestione errori fatali: configurazione non valida, 
+            // impossibilità di bind delle porte, etc.
             std::cerr << "Fatal error: " << e.what() << std::endl;
             return 1;
         }
     }
 
-    return 0;
+    return 0;  // Successo (questo punto non dovrebbe mai essere raggiunto)
 }

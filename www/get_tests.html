@@ -231,7 +231,7 @@ ${Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).joi
 
             async function testQueryParams(queryString) {
                 const result = document.getElementById('query-params-result');
-                const response = await makeRequest(`/cgi-bin/test.py?${queryString}`);
+                const response = await makeRequest(`/cgi-bin/info.py?${queryString}`);
                 
                 result.innerHTML = response.ok
                     ? `<div class="success">Status: ${response.status} ${response.statusText}</div>

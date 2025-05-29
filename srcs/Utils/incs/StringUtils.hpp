@@ -49,19 +49,6 @@ static std::string urlDecode(const std::string &str) {
         }
         return decoded.str();
     }
-    // Trim leading and trailing whitespace
-    static std::string trim(const std::string& str);
-
-    // Split string by delimiter
-    static std::vector<std::string> split(const std::string& str, char delimiter);
-
-    // Convert to lowercase
-    static std::string toLower(const std::string& str);
-
-    // Convert to uppercase
-    static std::string toUpper(const std::string& str);
-
-
 
 };
 
