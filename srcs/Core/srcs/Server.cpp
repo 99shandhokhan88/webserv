@@ -506,14 +506,17 @@ void Server::handleRootRequest(Client* client, const LocationConfig& location, c
     // Prima verifica se esiste un index file
     std::string indexPath = path + location.getIndex();
     
-    if (FileHandler::fileExists(indexPath) && !location.getAutoIndex()) {
-        // Servi index.html SOLO se autoindex è disabilitato
+    // LOGICA CORRETTA: Se esiste index.html, servilo SEMPRE (indipendentemente da autoindex)
+    if (FileHandler::fileExists(indexPath)) {
+        std::cout << "DEBUG: Index file found at " << indexPath << ", serving it" << std::endl;
         sendFileResponse(client, indexPath, false);
     } else if (location.getAutoIndex()) {
-        // Mostra directory listing se autoindex è abilitato
+        // Se NON esiste index.html MA autoindex è abilitato, mostra directory listing
+        std::cout << "DEBUG: No index file found, but autoindex is enabled, showing directory listing" << std::endl;
         handleDirectoryListing(client, path);
     } else {
-        // Altrimenti errore 403
+        // Se NON esiste index.html E autoindex è disabilitato, errore 403
+        std::cout << "DEBUG: No index file found and autoindex is disabled, returning 403" << std::endl;
         sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
     }
 }
@@ -522,6 +525,7 @@ void Server::handleDirectoryRequest(Client* client, const LocationConfig& locati
     
     // Redirect se manca lo slash finale
     if (requestPath.empty() || requestPath[requestPath.size() - 1] != '/') {
+        std::cout << "DEBUG: Directory request without trailing slash, redirecting to " << requestPath << "/" << std::endl;
         std::string redirectUrl = requestPath + "/";
         std::string response = "HTTP/1.1 301 Moved Permanently\r\n";
         response += "Location: " + redirectUrl + "\r\n";
@@ -532,15 +536,20 @@ void Server::handleDirectoryRequest(Client* client, const LocationConfig& locati
     
     // Cerca index file
     std::string indexPath = path + location.getIndex();
+    std::cout << "DEBUG: Checking for index file at " << indexPath << std::endl;
     if (FileHandler::fileExists(indexPath)) {
+        std::cout << "DEBUG: Index file found, serving it" << std::endl;
         sendFileResponse(client, indexPath, false);
         return;
     }
     
     // Autoindex se abilitato
+    std::cout << "DEBUG: No index file found, autoindex setting: " << (location.getAutoIndex() ? "enabled" : "disabled") << std::endl;
     if (location.getAutoIndex()) {
+        std::cout << "DEBUG: Showing directory listing" << std::endl;
         handleDirectoryListing(client, path);
     } else {
+        std::cout << "DEBUG: Autoindex disabled, returning 403" << std::endl;
         sendErrorResponse(client, 403, "Forbidden", servers[0]->config);
     }
 }

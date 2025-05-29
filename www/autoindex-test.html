@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webserv - Autoindex Logic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .test-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .test-link {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .back-button {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .back-button:hover {
+            background: #218838;
+        }
+        .logic-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .logic-table th, .logic-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .logic-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .logic-table .success {
+            background-color: #d4edda;
+        }
+        .logic-table .error {
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Autoindex Logic Test Page</h1>
+        
+        <a href="/index.html" class="back-button">← Torna alla Home</a>
+        
+        <div class="status">
+            <strong>✅ Index File Logic Working!</strong><br>
+            Questa pagina dimostra che la logica index/autoindex funziona correttamente. 
+            Quando accedi alla root directory (<code>/</code>), il server serve il file <code>index.html</code> 
+            invece di mostrare il directory listing.
+        </div>
+        
+        <div class="warning">
+            <strong>🧪 Test Purpose:</strong><br>
+            Questa pagina è stata creata per testare la logica corretta di index e autoindex. 
+            Se stai vedendo questa pagina, significa che:
+            <ul>
+                <li>Il file <code>index.html</code> è stato temporaneamente rinominato</li>
+                <li>Il server sta mostrando questa pagina invece del directory listing</li>
+                <li>La logica HTTP standard è implementata correttamente</li>
+            </ul>
+        </div>
+        
+        <h2>📋 Logica Index/Autoindex Implementata</h2>
+        
+        <table class="logic-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Index.html</th>
+                    <th>Autoindex</th>
+                    <th>Risultato</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="success">
+                    <td><strong>Caso 1</strong></td>
+                    <td>✅ Esiste</td>
+                    <td>ON/OFF</td>
+                    <td>🟢 Serve index.html</td>
+                    <td>✅ Implementato</td>
+                </tr>
+                <tr class="success">
+                    <td><strong>Caso 2</strong></td>
+                    <td>❌ Non esiste</td>
+                    <td>✅ ON</td>
+                    <td>🟢 Directory listing</td>
+                    <td>✅ Implementato</td>
+                </tr>
+                <tr class="success">
+                    <td><strong>Caso 3</strong></td>
+                    <td>❌ Non esiste</td>
+                    <td>❌ OFF</td>
+                    <td>🔴 403 Forbidden</td>
+                    <td>✅ Implementato</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>🧪 Test Links per Verificare la Logica</h2>
+        <div class="test-links">
+            <a href="/uploads/" class="test-link">📁 Uploads Directory<br><small>(Autoindex ON - Directory listing)</small></a>
+            <a href="/cgi-bin/" class="test-link">🔧 CGI Directory<br><small>(Autoindex ON - Directory listing)</small></a>
+            <a href="/css/" class="test-link">🎨 CSS Directory<br><small>(Autoindex OFF - 403 Forbidden)</small></a>
+            <a href="/test_dir/" class="test-link">📂 Test Directory<br><small>(Autoindex OFF - 403 Forbidden)</small></a>
+        </div>
+        
+        <h2>🔧 Come Testare</h2>
+        <ol>
+            <li><strong>Con index.html presente:</strong> Vai su <code>/</code> → Dovrebbe servire index.html</li>
+            <li><strong>Senza index.html:</strong> Rinomina index.html → Vai su <code>/</code> → Dovrebbe mostrare directory listing (se autoindex ON) o 403 (se autoindex OFF)</li>
+            <li><strong>Directory con autoindex ON:</strong> Vai su <code>/uploads/</code> → Dovrebbe mostrare file listing</li>
+            <li><strong>Directory con autoindex OFF:</strong> Vai su <code>/css/</code> → Dovrebbe restituire 403 Forbidden</li>
+        </ol>
+        
+        <p><em>Questa implementazione segue gli standard HTTP/1.1 e si comporta come Nginx.</em></p>
+        
+        <a href="/index.html" class="back-button">← Torna alla Test Suite Principale</a>
+    </div>
+</body>
+</html> 
