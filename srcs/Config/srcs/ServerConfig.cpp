@@ -282,12 +282,38 @@ void ServerConfig::parseLocationBlock(std::ifstream& configFile, const std::stri
             location.setRoot(root);
         }
         else if (key == "cgi_extension") {
-            std::string cgi_ext;
-            iss >> cgi_ext;
-            if (!cgi_ext.empty() && cgi_ext[cgi_ext.length()-1] == ';') {
-                cgi_ext.erase(cgi_ext.length()-1);
+            std::string extension, interpreter;
+            iss >> extension >> interpreter;
+            std::cout << "DEBUG: Raw cgi_extension directive: extension='" << extension << "', interpreter='" << interpreter << "'" << std::endl;
+            
+            if (!extension.empty() && !interpreter.empty()) {
+                // Rimuove eventuali punti e virgola alla fine
+                if (!interpreter.empty() && interpreter[interpreter.size()-1] == ';') {
+                    std::cout << "DEBUG: Removing semicolon from interpreter" << std::endl;
+                    interpreter.erase(interpreter.size()-1, 1);
+                }
+                
+                // Stampiamo dettagli aggiuntivi per il debug
+                std::cout << "DEBUG: Adding CGI interpreter: '" << extension << "' -> '" << interpreter << "'" << std::endl;
+                location.addCgiInterpreter(extension, interpreter);
+                
+                // Verifichiamo immediatamente che sia stato aggiunto
+                std::string interpreter_check = location.getCgiInterpreter(extension);
+                if (interpreter_check == interpreter) {
+                    std::cout << "DEBUG: Verification successful - interpreter was added correctly" << std::endl;
+                } else {
+                    std::cout << "DEBUG: ERROR - Interpreter was not added correctly. Got: '" << interpreter_check << "'" << std::endl;
+                }
+                
+                // Mostriamo il contenuto aggiornato della mappa
+                const std::map<std::string, std::string>& cgiMap = location.getCgiInterpreters();
+                std::cout << "DEBUG: CGI Interpreters map now contains " << cgiMap.size() << " entries" << std::endl;
+                for (std::map<std::string, std::string>::const_iterator it = cgiMap.begin(); it != cgiMap.end(); ++it) {
+                    std::cout << "DEBUG: Map entry: '" << it->first << "' -> '" << it->second << "'" << std::endl;
+                }
+            } else {
+                std::cout << "DEBUG: Invalid CGI extension configuration. Extension: '" << extension << "', Interpreter: '" << interpreter << "'" << std::endl;
             }
-            location.setCgiExtension(cgi_ext);
         }
         else if (key == "cgi_path") {
             std::string cgi_p;

@@ -131,6 +131,7 @@ void ConfigParser::parseLocationBlock(std::ifstream& file,
         location.addCgiInterpreter(".py", "/usr/bin/python3");
         location.addCgiInterpreter(".sh", "/bin/bash");
         location.addCgiInterpreter(".cgi", "/usr/bin/env");
+        location.addCgiInterpreter(".php", "/usr/bin/php");
         
         // Verifichiamo che siano stati aggiunti
         const std::map<std::string, std::string>& cgiMap = location.getCgiInterpreters();
@@ -260,12 +261,12 @@ void ConfigParser::parseDirective(const std::string& line, LocationConfig& locat
         location.setIndex(index);   // Set the index file in the location configuration
         
     }
-else if (key == "allow_delete") {
-    std::string value;
-    iss >> value;
-    location.setAllowDelete(value == "on");
-    std::cout << "DEBUG: Set allow_delete to " << value << std::endl;
-}
+    else if (key == "allow_delete") {
+        std::string value;
+        iss >> value;
+        location.setAllowDelete(value == "on");
+        std::cout << "DEBUG: Set allow_delete to " << value << std::endl;
+    }
     else if (key == "allow_methods") {
         location.clearAllowedMethods();
         std::string method;
