@@ -12,14 +12,9 @@
 #include "../../HTTP/incs/Request.hpp"
 #include "../../Config/incs/LocationConfig.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
+#include "../../Utils/incs/StringUtils.hpp"
 
-// Utility function to convert values to string
-template <typename T>
-std::string toString(const T& value) {
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
-}
+
 
 // Utility function to extract the directory from a file path
 std::string extractDirectory(const std::string& path) {
@@ -339,7 +334,7 @@ std::string CGIExecutor::execute() {
             }
             
             free_env(args);
-            throw std::runtime_error("CGI_TIMEOUT:CGI script timed out after " + toString(timeout_seconds) + " seconds");
+            throw std::runtime_error("CGI_TIMEOUT:CGI script timed out after " + StringUtils::toString(timeout_seconds) + " seconds");
         }
 
         // Cleanup arguments
@@ -354,10 +349,10 @@ std::string CGIExecutor::execute() {
         // Check if child process exited normally
         if (WIFSIGNALED(status)) {
             int sig = WTERMSIG(status);
-            throw std::runtime_error("CGI process terminated by signal " + toString(sig));
+            throw std::runtime_error("CGI process terminated by signal " + StringUtils::toString(sig));
         }
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            throw std::runtime_error("CGI process exited with status " + toString(WEXITSTATUS(status)));
+            throw std::runtime_error("CGI process exited with status " + StringUtils::toString(WEXITSTATUS(status)));
         }
 
         // --- PARSING CGI OUTPUT ---

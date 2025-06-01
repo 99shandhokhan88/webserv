@@ -394,7 +394,7 @@ void ServerConfig::addLocation(const LocationConfig& location) {
 
 void ServerConfig::setRoot(const std::string& root) {
     // Store root as absolute path
-    this->root = getAbsolutePath(root);
+    this->root = FileHandler::getAbsolutePath(root);
     
     // Ensure trailing slash
     if (!this->root.empty() && this->root[this->root.size()-1] != '/') {

@@ -21,9 +21,6 @@ public:
     std::string dechunk(const std::string& body);
 
     // Setters
-    void setMethod(const std::string& method);
-    void setUri(const std::string& uri);
-    void setVersion(const std::string& version);
     void setHeader(const std::string& key, const std::string& value);
     void setBody(const std::string& body);
 

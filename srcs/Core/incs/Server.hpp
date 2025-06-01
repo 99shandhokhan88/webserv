@@ -325,6 +325,5 @@ public:
  * @param headers Stringa contenente gli header HTTP
  * @return Lunghezza del contenuto in bytes
  */
-size_t getContentLength(const std::string& headers);
 
 #endif

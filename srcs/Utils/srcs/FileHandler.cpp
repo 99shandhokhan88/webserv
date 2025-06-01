@@ -134,8 +134,7 @@ std::string FileHandler::sanitizePath(const std::string& path) {
     return clean_path;
 }
 
-
-bool writeBinaryFile(const std::string& path, const std::string& content) {
+bool FileHandler::writeBinaryFile(const std::string& path, const std::string& content) {
     // Ensure directory exists
     std::string dir = path.substr(0, path.find_last_of('/'));
     if (!FileHandler::createDirectory(dir)) {
@@ -159,9 +158,7 @@ bool writeBinaryFile(const std::string& path, const std::string& content) {
     return success;
 }
 
-
-
-std::string getAbsolutePath(const std::string& relativePath) {
+std::string FileHandler::getAbsolutePath(const std::string& relativePath) {
     char resolvedPath[PATH_MAX];
     
     // First normalize the path by removing . and .. components
@@ -191,21 +188,9 @@ std::string getAbsolutePath(const std::string& relativePath) {
     return std::string(resolvedPath);
 }
 
-
-
-
-
-
-
-
-bool FileHandler::exists(const std::string& path) {
-    struct stat info;
-    return stat(path.c_str(), &info) == 0;
-}
-
 bool FileHandler::isPathWithinRoot(const std::string& path, const std::string& root) {
-    std::string absPath = getAbsolutePath(path);
-    std::string absRoot = getAbsolutePath(root);
+    std::string absPath = FileHandler::getAbsolutePath(path);
+    std::string absRoot = FileHandler::getAbsolutePath(root);
     
     return absPath.find(absRoot) == 0;
 }

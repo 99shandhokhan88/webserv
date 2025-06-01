@@ -28,12 +28,7 @@ std::vector<struct pollfd> Server::poll_fds;
 std::map<int, Client> Server::clients;
 
 
-template <typename T>
-std::string toString(const T& value) {
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
-}
+
 
 // Helper predicate for find_if
 struct PollFDFinder {
@@ -237,47 +232,6 @@ std::string Server::getErrorPage(int errorCode) const {
 }
 
 /**
- * @brief Estrae la lunghezza del contenuto dagli header HTTP
- * @param headers Stringa contenente tutti gli header HTTP
- * @return Lunghezza del contenuto in bytes, 0 se non specificata
- * 
- * Questa funzione helper cerca l'header "Content-Length" e ne estrae
- * il valore numerico. È essenziale per:
- * - Sapere quanto body leggere nelle richieste POST
- * - Verificare la completezza delle richieste
- * - Gestire correttamente il buffering
- * 
- * REFACTORING: Migliorati i nomi delle variabili per maggiore chiarezza
- */
-size_t getContentLength(const std::string& headers) {
-    // Cerca l'header "Content-Length:" (case-sensitive)
-    size_t content_length_position = headers.find("Content-Length:");  // ✅ REFACTORING: Era 'pos', ora più descrittivo
-    if (content_length_position == std::string::npos) {
-        return 0;  // Header non trovato
-    }
-    
-    // Salta il ":" e gli spazi bianchi
-    content_length_position = headers.find(':', content_length_position) + 1;
-    while (content_length_position < headers.size() && isspace(headers[content_length_position])) {
-        content_length_position++;
-    }
-    
-    // Trova la fine del numero (fino al primo non-digit)
-    size_t number_end_position = content_length_position;  // ✅ REFACTORING: Era 'end', ora più esplicito
-    while (number_end_position < headers.size() && isdigit(headers[number_end_position])) {
-        number_end_position++;
-    }
-    
-    // Se non ci sono cifre, ritorna 0
-    if (content_length_position == number_end_position) {
-        return 0;
-    }
-    
-    // Converte la sottostringa in numero
-    return static_cast<size_t>(atoi(headers.substr(content_length_position, number_end_position - content_length_position).c_str()));
-}
-
-/**
  * @brief Invia un file come risposta HTTP al client
  * @param client Client destinatario della risposta
  * @param path Percorso del file da inviare
@@ -333,7 +287,7 @@ void Server::sendFileResponse(Client* client, const std::string& path, bool isHe
     // Costruzione della risposta HTTP
     std::string response = "HTTP/1.1 200 OK\r\n";
     response += "Content-Type: " + mimeType + "\r\n";
-    response += "Content-Length: " + toString(contentLength) + "\r\n";
+    response += "Content-Length: " + StringUtils::toString(contentLength) + "\r\n";
     response += "Server: webserv/1.0\r\n";
     
     // Aggiunge header Date con timestamp corrente
@@ -406,7 +360,7 @@ void Server::handleDirectoryListing(Client* client, const std::string& path) {
         std::string content = html.str();
         std::string response = "HTTP/1.1 200 OK\r\n";
         response += "Content-Type: text/html\r\n";
-        response += "Content-Length: " + toString(content.size()) + "\r\n";
+        response += "Content-Length: " + StringUtils::toString(content.size()) + "\r\n";
         response += "\r\n";
         response += content;
 
@@ -640,12 +594,12 @@ void Server::sendErrorResponse(Client* client, int statusCode, const std::string
         errorPage = ss.str();
     }
 
-    std::string response = "HTTP/1.1 " + toString(statusCode) + " " + message + "\r\n";
+    std::string response = "HTTP/1.1 " + StringUtils::toString(statusCode) + " " + message + "\r\n";
     response += "Access-Control-Allow-Origin: *\r\n";
     response += "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n";
     response += "Access-Control-Allow-Headers: Content-Type, Authorization\r\n";
     response += "Content-Type: text/html\r\n";
-    response += "Content-Length: " + toString(errorPage.size()) + "\r\n";
+    response += "Content-Length: " + StringUtils::toString(errorPage.size()) + "\r\n";
     
     if (client->shouldKeepAlive()) {
         response += "Connection: keep-alive\r\n";
@@ -774,8 +728,8 @@ void Server::handlePostRequest(Client* client) {
                 return;
             }
             
-            std::string filename = "binary_" + toString(time(NULL)) + ".bin";
-            std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
+            std::string filename = "binary_" + StringUtils::toString(time(NULL)) + ".bin";
+            std::string fullPath = FileHandler::getAbsolutePath(uploadDir + "/" + filename);
             
             if (FileHandler::writeFile(fullPath, client->request.getBody())) {
                 std::string successContent = "<html><body><h1>Binary Data Received</h1>";
@@ -807,9 +761,9 @@ void Server::handlePostRequest(Client* client) {
                 formDataContent += it->first + ": " + it->second + "\n";
             }
             
-            std::string timestamp = toString(time(NULL));
+            std::string timestamp = StringUtils::toString(time(NULL));
             std::string filename = "form_" + timestamp + ".txt";
-            std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
+            std::string fullPath = FileHandler::getAbsolutePath(uploadDir + "/" + filename);
             
             if (FileHandler::writeFile(fullPath, formDataContent)) {
                 std::string successContent = "<html><body><h1>Form Data Received</h1>";
@@ -830,8 +784,8 @@ void Server::handlePostRequest(Client* client) {
                 return;
             }
             
-            std::string filename = "text_" + toString(time(NULL)) + ".txt";
-            std::string fullPath = getAbsolutePath(uploadDir + "/" + filename);
+            std::string filename = "text_" + StringUtils::toString(time(NULL)) + ".txt";
+            std::string fullPath = FileHandler::getAbsolutePath(uploadDir + "/" + filename);
             
             if (FileHandler::writeFile(fullPath, client->request.getBody())) {
                 std::string successContent = "<html><body><h1>Text Received</h1>";
@@ -997,7 +951,7 @@ void Server::parseMultipartBody(const std::string& body, const std::string& boun
         std::cout << "DEBUG: Content size: " << content.size() << " bytes\n";
         
         // Write file
-        if (!writeBinaryFile(fullPath, content)) {
+        if (!FileHandler::writeBinaryFile(fullPath, content)) {
             std::cerr << "ERROR: Failed to write file: " << fullPath << "\n";
             throw std::runtime_error("Failed to write uploaded file");
         }
@@ -1037,7 +991,7 @@ void Server::handleDeleteRequest(Client* client) {
                   << "  - Resolved: " << resolvedPath << std::endl;
 
         // Security: Prevent path traversal
-        std::string serverRoot = getAbsolutePath(servers[0]->config.getRoot());
+        std::string serverRoot = FileHandler::getAbsolutePath(servers[0]->config.getRoot());
         if (!FileHandler::isPathWithinRoot(resolvedPath, serverRoot)) {
             std::cerr << "Path traversal attempt blocked: " << resolvedPath << std::endl;
             sendErrorResponse(client, 403, "Forbidden: Invalid path", servers[0]->config);
@@ -1045,7 +999,7 @@ void Server::handleDeleteRequest(Client* client) {
         }
 
         // Check if the file exists
-        if (!FileHandler::exists(resolvedPath)) {
+        if (!FileHandler::fileExists(resolvedPath)) {
             sendErrorResponse(client, 404, "File not found", servers[0]->config);
             return;
         }
@@ -1252,9 +1206,9 @@ void Server::sendResponse(Client* client, int status, const std::string& content
         default: statusText = "Unknown";
     }
     
-    std::string response = "HTTP/1.1 " + toString(status) + " " + statusText + "\r\n";
+    std::string response = "HTTP/1.1 " + StringUtils::toString(status) + " " + statusText + "\r\n";
     response += "Content-Type: text/html\r\n";
-    response += "Content-Length: " + toString(content.size()) + "\r\n";
+    response += "Content-Length: " + StringUtils::toString(content.size()) + "\r\n";
     
     if (client->shouldKeepAlive()) {
         response += "Connection: keep-alive\r\n";
@@ -1338,7 +1292,7 @@ void Server::sendMethodNotAllowedResponse(Client* client, const std::vector<std:
     response += "Access-Control-Allow-Methods: " + allowHeader + "\r\n";
     response += "Access-Control-Allow-Headers: Content-Type, Content-Length\r\n";
     response += "Content-Type: text/html\r\n";
-    response += "Content-Length: " + toString(errorContent.size()) + "\r\n";
+    response += "Content-Length: " + StringUtils::toString(errorContent.size()) + "\r\n";
     
     if (client->shouldKeepAlive()) {
         response += "Connection: keep-alive\r\n";

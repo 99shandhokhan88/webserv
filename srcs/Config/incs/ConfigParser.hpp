@@ -36,7 +36,6 @@ class ConfigParser
                             
                             // Parse the configuration file
                             void parse(const std::string& filename);
-void parseRootDirective(std::string value);
                             // Get the list of server configurations
                             const std::vector<ServerConfig>& getServers() const;
                     private:
