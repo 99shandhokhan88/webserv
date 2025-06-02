@@ -32,30 +32,14 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-# include <iostream>
-# include <vector>
-# include <map>
-# include <set>
-# include <string>
-# include <cstring>
-# include <sstream>
-# include <fstream>
-# include <algorithm>
-# include <stdexcept>
-# include <sys/socket.h>
-# include <netinet/in.h>
-# include <sys/types.h>
-# include <unistd.h>
-# include <fcntl.h>
-# include <poll.h>
-# include <errno.h>
-# include "../../Config/incs/ServerConfig.hpp"
-# include "../../Config/incs/LocationConfig.hpp"
+#include "../../../incs/webserv.hpp"
+#include "../../Config/incs/ServerConfig.hpp"
+#include "../../Config/incs/LocationConfig.hpp"
+#include "Client.hpp"
+#include "../../HTTP/incs/Request.hpp"
+#include "../../HTTP/incs/Response.hpp"
 
-// Forward declarations per evitare dipendenze circolari
-class Client;
-class Request;
-class Response;
+// ==================== CLASSE SERVER ====================
 
 /**
  * @brief Classe principale del server HTTP
@@ -183,6 +167,14 @@ private:
      * @return Contenuto HTML della pagina di errore
      */
     std::string getErrorPage(int errorCode) const;
+    
+    /**
+     * @brief Invia dati in modo sicuro gestendo errori senza errno
+     * @param client Client destinatario
+     * @param data Dati da inviare
+     * @return true se invio riuscito, false se client deve essere rimosso
+     */
+    static bool safeSend(Client* client, const std::string& data);
 
 public:
     // ==================== COSTRUTTORE E DISTRUTTORE ====================
@@ -255,75 +247,61 @@ public:
      */
     void sendResponse(Client* client, int status, const std::string& content);
     
-    // ==================== METODI DI UTILITÀ ====================
-    
     /**
-     * @brief Modifica gli eventi di polling per un fd
-     * @param index Indice nell'array poll_fds
+     * @brief Modifica gli eventi di polling per un client
+     * @param index Indice nel vettore poll_fds
      * @param events Nuovi eventi da monitorare
      */
     void setPollEvents(size_t index, short events);
     
     /**
-     * @brief Gestisce una richiesta HTTP generica
-     * @param request Richiesta HTTP parsata
-     * @param response Oggetto risposta da popolare
+     * @brief Gestisce una richiesta HTTP
+     * @param request Richiesta da elaborare
+     * @param response Risposta da generare
      */
     void handleRequest(const Request& request, Response& response);
     
-    // ==================== METODI STATICI DI GESTIONE ====================
-    
     /**
-     * @brief Elabora una richiesta client completa
-     * @param client Client con richiesta da elaborare
-     * 
-     * Determina il tipo di richiesta e chiama il gestore appropriato
+     * @brief Elabora una richiesta di un client
+     * @param client Client che ha fatto la richiesta
      */
     static void processRequest(Client* client);
     
     /**
-     * @brief Rimuove un client e chiude la connessione
+     * @brief Rimuove un client dalle strutture dati
      * @param client_fd File descriptor del client da rimuovere
      */
     static void removeClient(int client_fd);
     
     /**
-     * @brief Invia una risposta di errore HTTP
+     * @brief Invia una risposta di errore al client
      * @param client Client destinatario
      * @param statusCode Codice di errore HTTP
      * @param message Messaggio di errore
-     * @param config Configurazione per pagine di errore personalizzate
+     * @param config Configurazione del server per pagine di errore personalizzate
      */
     static void sendErrorResponse(Client* client, int statusCode, const std::string& message, const ServerConfig& config);
     
     /**
-     * @brief Invia risposta "405 Method Not Allowed"
+     * @brief Invia risposta "Method Not Allowed"
      * @param client Client destinatario
-     * @param allowedMethods Lista dei metodi HTTP permessi
+     * @param allowedMethods Lista dei metodi permessi
      */
     static void sendMethodNotAllowedResponse(Client* client, const std::vector<std::string>& allowedMethods);
     
     /**
-     * @brief Invia risposta a richiesta OPTIONS
+     * @brief Invia risposta OPTIONS con metodi supportati
      * @param client Client destinatario
-     * @param allowedMethods Lista dei metodi HTTP supportati
+     * @param allowedMethods Lista dei metodi supportati
      */
     static void sendOptionsResponse(Client* client, const std::vector<std::string>& allowedMethods);
     
     /**
      * @brief Analizza dati form URL-encoded
-     * @param body Contenuto del body HTTP
+     * @param body Corpo della richiesta
      * @param formData Mappa dove salvare i dati parsati
      */
     void parseFormUrlEncoded(const std::string& body, std::map<std::string, std::string>& formData);
 };
 
-// ==================== FUNZIONI HELPER GLOBALI ====================
-
-/**
- * @brief Estrae la lunghezza del contenuto dagli header HTTP
- * @param headers Stringa contenente gli header HTTP
- * @return Lunghezza del contenuto in bytes
- */
-
-#endif
+#endif // SERVER_HPP

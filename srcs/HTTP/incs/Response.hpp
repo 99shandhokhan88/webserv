@@ -14,14 +14,8 @@
 #ifndef RESPONSE_HPP
 #define RESPONSE_HPP
 
-#include "MimeTypes.hpp"        // From Utils
-
-#include <string>
-#include <map>
-#include <sstream>
-
-#include "../../Utils/incs/MimeTypes.hpp"      // From Utils
-
+#include "../../../incs/webserv.hpp"
+#include "../../Utils/incs/MimeTypes.hpp"
 
 class Response
 {

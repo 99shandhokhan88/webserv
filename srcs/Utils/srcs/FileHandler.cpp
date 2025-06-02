@@ -7,6 +7,10 @@
 #include <string.h>  // For strerror
 #include "../../Utils/incs/StringUtils.hpp"
 
+// Initialize static members
+std::queue<FileOperation*> FileHandler::pendingOperations;
+std::map<int, FileOperation*> FileHandler::activeOperations;
+
 std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
     std::vector<std::string> files;
     DIR* dir = opendir(path.c_str());
@@ -21,8 +25,6 @@ std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
     }
     return files;
 }
-
-
 
 bool FileHandler::createDirectory(const std::string& path) {
     // Try to create directory first
@@ -47,10 +49,17 @@ bool FileHandler::createDirectory(const std::string& path) {
 }
 
 std::string FileHandler::readFile(const std::string& path) {
-    std::ifstream file(path.c_str(), std::ios::binary);
-    if (!file) throw std::runtime_error("Cannot open file: " + path);
-    return std::string(std::istreambuf_iterator<char>(file), 
-                     std::istreambuf_iterator<char>());
+    FileOperation* op = new FileOperation(FileOperation::Type::READ, path);
+    addFileOperation(op);
+    
+    // Wait for operation to complete
+    while (!op->isCompleted() && !op->hasFailed()) {
+        handleFileOperations();
+    }
+    
+    std::string result = op->getResult();
+    delete op;
+    return result;
 }
 
 bool FileHandler::writeFile(const std::string& path, const std::string& content) {
@@ -62,11 +71,17 @@ bool FileHandler::writeFile(const std::string& path, const std::string& content)
     // Decodifica URL
     real_content = StringUtils::urlDecode(real_content);
     
-    std::ofstream file(path.c_str());
-    if (!file) return false;
+    FileOperation* op = new FileOperation(FileOperation::Type::WRITE, path, real_content);
+    addFileOperation(op);
     
-    file << real_content;
-    return file.good();
+    // Wait for operation to complete
+    while (!op->isCompleted() && !op->hasFailed()) {
+        handleFileOperations();
+    }
+    
+    bool success = op->isCompleted();
+    delete op;
+    return success;
 }
 
 bool FileHandler::fileExists(const std::string& path) {
@@ -86,7 +101,18 @@ bool FileHandler::isDirectory(const std::string& path) {
 
 bool FileHandler::deleteFile(const std::string& path) {
     if (!fileExists(path)) return false;
-    return remove(path.c_str()) == 0;
+    
+    FileOperation* op = new FileOperation(FileOperation::Type::DELETE, path);
+    addFileOperation(op);
+    
+    // Wait for operation to complete
+    while (!op->isCompleted() && !op->hasFailed()) {
+        handleFileOperations();
+    }
+    
+    bool success = op->isCompleted();
+    delete op;
+    return success;
 }
 
 bool FileHandler::deleteDirectory(const std::string& path) {
@@ -142,19 +168,16 @@ bool FileHandler::writeBinaryFile(const std::string& path, const std::string& co
         return false;
     }
     
-    // Open file in binary mode
-    std::ofstream file(path.c_str(), std::ios::binary);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << path << std::endl;
-        return false;
+    FileOperation* op = new FileOperation(FileOperation::Type::WRITE, path, content);
+    addFileOperation(op);
+    
+    // Wait for operation to complete
+    while (!op->isCompleted() && !op->hasFailed()) {
+        handleFileOperations();
     }
     
-    // Write content
-    file.write(content.c_str(), content.size());
-    bool success = file.good();
-    file.close();
-    
-    std::cout << "File written: " << path << " (size: " << content.size() << " bytes)" << std::endl;
+    bool success = op->isCompleted();
+    delete op;
     return success;
 }
 
@@ -193,4 +216,70 @@ bool FileHandler::isPathWithinRoot(const std::string& path, const std::string& r
     std::string absRoot = FileHandler::getAbsolutePath(root);
     
     return absPath.find(absRoot) == 0;
+}
+
+void FileHandler::addFileOperation(FileOperation* op) {
+    if (op->start()) {
+        activeOperations[op->getFd()] = op;
+    } else {
+        pendingOperations.push(op);
+    }
+}
+
+void FileHandler::handleFileOperations() {
+    if (activeOperations.empty() && pendingOperations.empty()) {
+        return;
+    }
+
+    // Create poll array for active operations
+    std::vector<struct pollfd> pollfds;
+    for (const auto& pair : activeOperations) {
+        struct pollfd pfd;
+        pfd.fd = pair.first;
+        pfd.events = (pair.second->getType() == FileOperation::Type::READ) ? POLLIN : POLLOUT;
+        pfd.revents = 0;
+        pollfds.push_back(pfd);
+    }
+
+    // Poll for events
+    if (!pollfds.empty()) {
+        int poll_result = poll(pollfds.data(), pollfds.size(), 0);
+        if (poll_result > 0) {
+            for (size_t i = 0; i < pollfds.size(); ++i) {
+                FileOperation* op = activeOperations[pollfds[i].fd];
+                if (!op->handlePollEvent(pollfds[i].revents)) {
+                    // Operation completed or failed
+                    op->cleanup();
+                    activeOperations.erase(pollfds[i].fd);
+                }
+            }
+        }
+    }
+
+    // Process pending operations
+    while (!pendingOperations.empty()) {
+        FileOperation* op = pendingOperations.front();
+        pendingOperations.pop();
+        
+        if (op->start()) {
+            activeOperations[op->getFd()] = op;
+        } else {
+            delete op;
+        }
+    }
+}
+
+void FileHandler::cleanup() {
+    // Clean up active operations
+    for (auto& pair : activeOperations) {
+        pair.second->cleanup();
+        delete pair.second;
+    }
+    activeOperations.clear();
+
+    // Clean up pending operations
+    while (!pendingOperations.empty()) {
+        delete pendingOperations.front();
+        pendingOperations.pop();
+    }
 }

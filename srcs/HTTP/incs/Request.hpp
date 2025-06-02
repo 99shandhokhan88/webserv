@@ -1,11 +1,8 @@
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
-#include "StringUtils.hpp"
-#include <string>
-#include <map>
-#include <sstream>
-#include <algorithm>
+#include "../../../incs/webserv.hpp"
+#include "../../Utils/incs/StringUtils.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
 
 class Request {

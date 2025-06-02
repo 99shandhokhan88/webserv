@@ -21,10 +21,9 @@
  * 4. Gestisce gli errori fatali
  */
 
-#include <iostream>
-#include <stdexcept>
-#include "ServerConfig.hpp"  // Classe per la gestione della configurazione
-#include "Server.hpp"        // Classe principale del server
+#include "../incs/webserv.hpp"
+#include "Config/incs/ServerConfig.hpp"
+#include "Core/incs/Server.hpp"
 
 /**
  * @brief Funzione principale del programma

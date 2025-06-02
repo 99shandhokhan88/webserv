@@ -14,11 +14,8 @@
 #ifndef SERVERCONFIG_HPP
 #define SERVERCONFIG_HPP
 
+#include "../../../incs/webserv.hpp"
 #include "LocationConfig.hpp"
-#include <string>
-#include <vector>
-#include <map>
-#include <set> // Add this line
 
 class ServerConfig {
 private:

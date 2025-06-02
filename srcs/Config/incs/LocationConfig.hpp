@@ -1,11 +1,7 @@
 #ifndef LOCATIONCONFIG_HPP
 #define LOCATIONCONFIG_HPP
 
-#include <string>
-#include <iostream>
-#include <vector>
-#include <set>
-#include <map>
+#include "../../../incs/webserv.hpp"
 
 class LocationConfig {
 private:

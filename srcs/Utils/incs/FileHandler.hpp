@@ -2,15 +2,10 @@
 #ifndef FILEHANDLER_HPP
 #define FILEHANDLER_HPP
 
-#include <string>
-#include <vector>
-#include <unistd.h>
-#include <fstream>
-#include <sys/stat.h>
-#include <dirent.h>  // Add this for directory operations
-#include <cstring>   // For strcmp
-#include <limits.h>
-#include <stdlib.h>
+#include "../../../incs/webserv.hpp"
+#include "FileOperation.hpp"
+#include <map>
+#include <queue>
 
 class FileHandler {
 public:
@@ -61,6 +56,16 @@ public:
 
     static bool writeBinaryFile(const std::string& path, const std::string& data);
     static std::string getAbsolutePath(const std::string& relativePath);
+
+    // Async file operations
+    static void addFileOperation(FileOperation* op);
+    static void handleFileOperations();
+    static bool hasPendingOperations() { return !pendingOperations.empty(); }
+    static void cleanup();
+
+private:
+    static std::queue<FileOperation*> pendingOperations;
+    static std::map<int, FileOperation*> activeOperations;
 };
 
 #endif

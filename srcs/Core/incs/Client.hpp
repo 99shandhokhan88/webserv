@@ -22,13 +22,8 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
+#include "../../../incs/webserv.hpp"
 #include "../../HTTP/incs/Request.hpp"
-#include <string>
-#include <poll.h>
-#include "../../HTTP/incs/Response.hpp"
-
-// Forward declaration per evitare dipendenze circolari
-class Server;
 
 /**
  * @brief Classe che rappresenta un client connesso al server
@@ -41,21 +36,6 @@ class Server;
  * - Fornisce interfaccia per l'invio delle risposte
  */
 class Client {
-public:
-    // ==================== COSTANTI DI CONFIGURAZIONE ====================
-    
-    /** @brief Dimensione buffer per lettura dati dal socket (1KB) */
-    static const size_t BUFFER_SIZE = 1024;
-    
-    /** @brief Dimensione massima body di default (1MB) - può essere sovrascritta dalla configurazione */
-    static const size_t DEFAULT_MAX_BODY_SIZE = 1048576;
-    
-    /** @brief Separatore header HTTP (\r\n\r\n) */
-    static const char* const HTTP_HEADER_SEPARATOR;
-    
-    /** @brief Separatore linea HTTP (\r\n) */
-    static const char* const HTTP_LINE_SEPARATOR;
-
 private:
     // ==================== MEMBRI PRIVATI ====================
     

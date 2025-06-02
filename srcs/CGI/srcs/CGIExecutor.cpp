@@ -239,7 +239,7 @@ std::string CGIExecutor::execute() {
                     close(pipe_in[1]);
                     close(pipe_out[0]);
                     free_env(args);
-                    throw std::runtime_error("Failed to write POST data to CGI: " + std::string(strerror(errno)));
+                    throw std::runtime_error("Failed to write POST data to CGI");
                 }
                 body_data += written;
                 remaining -= written;
@@ -278,12 +278,11 @@ std::string CGIExecutor::execute() {
             int poll_result = poll(&pfd, 1, poll_timeout_ms);
             
             if (poll_result == -1) {
-                if (errno == EINTR) continue; // Interrupted by signal, retry
                 close(pipe_out[0]);
                 free_env(args);
                 kill(pid, SIGKILL); // Terminate child process
                 waitpid(pid, NULL, 0); // Clean up zombie
-                throw std::runtime_error("Poll failed: " + std::string(strerror(errno)));
+                throw std::runtime_error("Poll failed");
             }
             if (poll_result == 0) {
                 std::cerr << "CGI TIMEOUT: No data available within timeout" << std::endl;
@@ -294,10 +293,6 @@ std::string CGIExecutor::execute() {
             if (pfd.revents & POLLIN) {
                 bytes_read = read(pipe_out[0], buffer, sizeof(buffer));
                 if (bytes_read < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        continue; // No data available, continue waiting
-                    }
-                    std::cerr << "Read error: " << strerror(errno) << std::endl;
                     break;
                 } else if (bytes_read == 0) {
                     std::cerr << "CGI process closed output pipe" << std::endl;

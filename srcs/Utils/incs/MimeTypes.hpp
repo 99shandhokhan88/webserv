@@ -1,8 +1,7 @@
 #ifndef MIMETYPES_HPP
 #define MIMETYPES_HPP
 
-#include <string>
-#include <map>
+#include "../../../incs/webserv.hpp"
 
 class MimeTypes {
 private:

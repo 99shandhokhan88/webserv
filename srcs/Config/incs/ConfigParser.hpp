@@ -14,17 +14,9 @@
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
 
-
-#include <string>
-#include <vector>
-#include <map>
+#include "../../../incs/webserv.hpp"
 #include "ServerConfig.hpp"
 #include "LocationConfig.hpp"
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
-
-
 
 class ConfigParser
 {

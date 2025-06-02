@@ -14,11 +14,7 @@
 #ifndef STRINGUTILS_HPP
 #define STRINGUTILS_HPP
 
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <cctype>
-#include <sstream>
+#include "../../../incs/webserv.hpp"
 
 class StringUtils {
 public:
@@ -51,8 +47,5 @@ static std::string urlDecode(const std::string &str) {
     }
 
 };
-
-std::string extractBoundary(const std::string& contentType);
-
 
 #endif // STRINGUTILS_HPP
