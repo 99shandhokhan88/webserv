@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/25 22:33:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/13 19:52:19 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:49:11 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #define CONFIGPARSER_HPP
 
 #include "../../../incs/webserv.hpp"
+
 #include "ServerConfig.hpp"
 #include "LocationConfig.hpp"
 

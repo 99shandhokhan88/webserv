@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/02/16 12:17:23 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:53:08 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,8 @@
 // Additional C libraries
 #include <limits.h>
 #include <stdlib.h>
+
+#include <queue>
 
 // ==================== FORWARD DECLARATIONS ====================
 

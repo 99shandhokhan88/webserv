@@ -6,10 +6,11 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:34:31 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/02 19:47:59 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:51:05 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "../../../incs/webserv.hpp"
 
 
 #include "Response.hpp"             // Local header

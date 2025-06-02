@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:18:13 by vzashev           #+#    #+#             */
-/*   Updated: 2025/04/02 19:47:43 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:50:41 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #define RESPONSE_HPP
 
 #include "../../../incs/webserv.hpp"
+
 #include "../../Utils/incs/MimeTypes.hpp"
 
 class Response

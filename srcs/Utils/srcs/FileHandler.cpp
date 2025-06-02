@@ -1,10 +1,10 @@
-// FileHandler.cpp
+
+#include "../../../incs/webserv.hpp"
+
+
 #include "FileHandler.hpp"
-#include <dirent.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <iostream>  // For std::cerr
-#include <string.h>  // For strerror
+
+
 #include "../../Utils/incs/StringUtils.hpp"
 
 // Initialize static members
@@ -23,7 +23,7 @@ std::vector<std::string> FileHandler::listDirectory(const std::string& path) {
         }
         closedir(dir);
     }
-    return files;
+    return files;  // Added missing return statement
 }
 
 bool FileHandler::createDirectory(const std::string& path) {
@@ -49,7 +49,7 @@ bool FileHandler::createDirectory(const std::string& path) {
 }
 
 std::string FileHandler::readFile(const std::string& path) {
-    FileOperation* op = new FileOperation(FileOperation::Type::READ, path);
+    FileOperation* op = new FileOperation(FILE_OP_READ, path);
     addFileOperation(op);
     
     // Wait for operation to complete
@@ -63,15 +63,15 @@ std::string FileHandler::readFile(const std::string& path) {
 }
 
 bool FileHandler::writeFile(const std::string& path, const std::string& content) {
-    // Estrai solo il contenuto dopo 'textcontent='
+    // Extract content after 'textcontent='
     size_t content_start = content.find("textcontent=");
     std::string real_content = (content_start != std::string::npos) ? 
         content.substr(content_start + 12) : content;
     
-    // Decodifica URL
+    // URL decode
     real_content = StringUtils::urlDecode(real_content);
     
-    FileOperation* op = new FileOperation(FileOperation::Type::WRITE, path, real_content);
+    FileOperation* op = new FileOperation(FILE_OP_WRITE, path, real_content);
     addFileOperation(op);
     
     // Wait for operation to complete
@@ -102,7 +102,7 @@ bool FileHandler::isDirectory(const std::string& path) {
 bool FileHandler::deleteFile(const std::string& path) {
     if (!fileExists(path)) return false;
     
-    FileOperation* op = new FileOperation(FileOperation::Type::DELETE, path);
+    FileOperation* op = new FileOperation(FILE_OP_DELETE, path);
     addFileOperation(op);
     
     // Wait for operation to complete
@@ -138,7 +138,7 @@ std::string FileHandler::sanitizePath(const std::string& path) {
     const size_t len = path.length();
     
     for (size_t i = 0; i < len; ++i) {
-        char c = path[i];  // Removed const to allow modification
+        char c = path[i];
         
         // Skip control characters and special chars
         if (c <= 32 || c == ';' || c == '|' || c == '&') continue;
@@ -153,10 +153,6 @@ std::string FileHandler::sanitizePath(const std::string& path) {
         clean_path += c;
     }
     
-    // DON'T remove trailing slash for directory paths - this is needed for autoindex
-    // Only remove trailing slash for non-root paths if it's not intended to be a directory
-    // The server logic will handle directory detection and redirects properly
-    
     return clean_path;
 }
 
@@ -168,7 +164,7 @@ bool FileHandler::writeBinaryFile(const std::string& path, const std::string& co
         return false;
     }
     
-    FileOperation* op = new FileOperation(FileOperation::Type::WRITE, path, content);
+    FileOperation* op = new FileOperation(FILE_OP_WRITE, path, content);
     addFileOperation(op);
     
     // Wait for operation to complete
@@ -196,7 +192,7 @@ std::string FileHandler::getAbsolutePath(const std::string& relativePath) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         std::cerr << "Failed to get current working directory" << std::endl;
-        return normalizedPath; // Return as is if we can't get CWD
+        return normalizedPath;
     }
     
     // Build absolute path
@@ -205,7 +201,7 @@ std::string FileHandler::getAbsolutePath(const std::string& relativePath) {
     // Resolve the absolute path
     if (realpath(absolutePath.c_str(), resolvedPath) == NULL) {
         std::cerr << "Failed to resolve path: " << absolutePath << std::endl;
-        return absolutePath; // Return unresolved absolute path
+        return absolutePath;
     }
     
     return std::string(resolvedPath);
@@ -233,17 +229,18 @@ void FileHandler::handleFileOperations() {
 
     // Create poll array for active operations
     std::vector<struct pollfd> pollfds;
-    for (const auto& pair : activeOperations) {
+    for (std::map<int, FileOperation*>::const_iterator it = activeOperations.begin();
+         it != activeOperations.end(); ++it) {
         struct pollfd pfd;
-        pfd.fd = pair.first;
-        pfd.events = (pair.second->getType() == FileOperation::Type::READ) ? POLLIN : POLLOUT;
+        pfd.fd = it->first;
+        pfd.events = (it->second->getType() == FILE_OP_READ) ? POLLIN : POLLOUT;
         pfd.revents = 0;
         pollfds.push_back(pfd);
     }
 
     // Poll for events
     if (!pollfds.empty()) {
-        int poll_result = poll(pollfds.data(), pollfds.size(), 0);
+        int poll_result = poll(&pollfds[0], pollfds.size(), 0);
         if (poll_result > 0) {
             for (size_t i = 0; i < pollfds.size(); ++i) {
                 FileOperation* op = activeOperations[pollfds[i].fd];
@@ -271,9 +268,10 @@ void FileHandler::handleFileOperations() {
 
 void FileHandler::cleanup() {
     // Clean up active operations
-    for (auto& pair : activeOperations) {
-        pair.second->cleanup();
-        delete pair.second;
+    for (std::map<int, FileOperation*>::iterator it = activeOperations.begin();
+         it != activeOperations.end(); ++it) {
+        it->second->cleanup();
+        delete it->second;
     }
     activeOperations.clear();
 

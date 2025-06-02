@@ -1,3 +1,8 @@
+
+
+#include "../../../incs/webserv.hpp"
+
+
 #include "../incs/MimeTypes.hpp"
 
 // Inizializzazione membro statico

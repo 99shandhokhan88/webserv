@@ -6,7 +6,7 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/16 12:17:23 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/29 22:54:15 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:50:05 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,9 +33,13 @@
 # define SERVER_HPP
 
 #include "../../../incs/webserv.hpp"
+
+
 #include "../../Config/incs/ServerConfig.hpp"
 #include "../../Config/incs/LocationConfig.hpp"
+
 #include "Client.hpp"
+
 #include "../../HTTP/incs/Request.hpp"
 #include "../../HTTP/incs/Response.hpp"
 

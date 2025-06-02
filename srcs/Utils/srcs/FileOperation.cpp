@@ -1,62 +1,68 @@
-#include "FileOperation.hpp"
-#include <iostream>
-#include <cstring>
 
-FileOperation::FileOperation(Type type, const std::string& path, const std::string& content)
-    : type(type), state(State::PENDING), path(path), content(content), fd(-1), bytesProcessed(0), totalBytes(0) {}
+#include "../../../incs/webserv.hpp"
+
+
+#include "FileOperation.hpp"
+
+
+FileOperation::FileOperation(FileOperationType type, const std::string& path, const std::string& content)
+    : type(type), state(FILE_OP_PENDING), path(path), content(content), fd(-1), bytesProcessed(0), totalBytes(0) {}
 
 FileOperation::~FileOperation() {
     cleanup();
 }
 
+bool FileOperation::isCompleted() const { return state == FILE_OP_COMPLETED; }
+bool FileOperation::hasFailed() const { return state == FILE_OP_FAILED; }
+bool FileOperation::isPending() const { return state == FILE_OP_PENDING; }
+const std::string& FileOperation::getResult() const { return result; }
+
 bool FileOperation::start() {
-    if (state != State::PENDING) {
+    if (state != FILE_OP_PENDING) {
         return false;
     }
 
     if (!openFile()) {
-        state = State::FAILED;
+        state = FILE_OP_FAILED;
         return false;
     }
 
-    state = State::IN_PROGRESS;
+    state = FILE_OP_IN_PROGRESS;
     return true;
 }
 
 bool FileOperation::openFile() {
     int flags;
-    mode_t mode = 0644; // Default file permissions
+    mode_t mode = 0644;
 
     switch (type) {
-        case Type::READ:
+        case FILE_OP_READ:
             flags = O_RDONLY;
             break;
-        case Type::WRITE:
+        case FILE_OP_WRITE:
             flags = O_WRONLY | O_CREAT | O_TRUNC;
             break;
-        case Type::DELETE:
-            return true; // No need to open file for delete
+        case FILE_OP_DELETE:
+            return true;
         default:
             return false;
     }
 
-    if (type != Type::DELETE) {
+    if (type != FILE_OP_DELETE) {
         fd = open(path.c_str(), flags, mode);
         if (fd == -1) {
             std::cerr << "Failed to open file " << path << ": " << strerror(errno) << std::endl;
             return false;
         }
 
-        // Set non-blocking mode
-        int flags = fcntl(fd, F_GETFL, 0);
-        if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        int current_flags = fcntl(fd, F_GETFL, 0);
+        if (current_flags == -1 || fcntl(fd, F_SETFL, current_flags | O_NONBLOCK) == -1) {
             close(fd);
             fd = -1;
             return false;
         }
 
-        // For write operations, set total bytes
-        if (type == Type::WRITE) {
+        if (type == FILE_OP_WRITE) {
             totalBytes = content.size();
         }
     }
@@ -65,31 +71,31 @@ bool FileOperation::openFile() {
 }
 
 bool FileOperation::handlePollEvent(short revents) {
-    if (state != State::IN_PROGRESS) {
+    if (state != FILE_OP_IN_PROGRESS) {
         return false;
     }
 
     if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
-        state = State::FAILED;
+        state = FILE_OP_FAILED;
         return false;
     }
 
     switch (type) {
-        case Type::READ:
+        case FILE_OP_READ:
             return handleRead(revents);
-        case Type::WRITE:
+        case FILE_OP_WRITE:
             return handleWrite(revents);
-        case Type::DELETE:
+        case FILE_OP_DELETE:
             return handleDelete();
         default:
-            state = State::FAILED;
+            state = FILE_OP_FAILED;
             return false;
     }
 }
 
 bool FileOperation::handleRead(short revents) {
     if (!(revents & POLLIN)) {
-        return true; // Not ready to read yet
+        return true;
     }
 
     char buffer[4096];
@@ -97,15 +103,14 @@ bool FileOperation::handleRead(short revents) {
 
     if (bytesRead < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return true; // Not ready yet, try again later
+            return true;
         }
-        state = State::FAILED;
+        state = FILE_OP_FAILED;
         return false;
     }
 
     if (bytesRead == 0) {
-        // EOF reached
-        state = State::COMPLETED;
+        state = FILE_OP_COMPLETED;
         return false;
     }
 
@@ -115,11 +120,11 @@ bool FileOperation::handleRead(short revents) {
 
 bool FileOperation::handleWrite(short revents) {
     if (!(revents & POLLOUT)) {
-        return true; // Not ready to write yet
+        return true;
     }
 
     if (bytesProcessed >= totalBytes) {
-        state = State::COMPLETED;
+        state = FILE_OP_COMPLETED;
         return false;
     }
 
@@ -128,15 +133,15 @@ bool FileOperation::handleWrite(short revents) {
 
     if (bytesWritten < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return true; // Not ready yet, try again later
+            return true;
         }
-        state = State::FAILED;
+        state = FILE_OP_FAILED;
         return false;
     }
 
     bytesProcessed += bytesWritten;
     if (bytesProcessed >= totalBytes) {
-        state = State::COMPLETED;
+        state = FILE_OP_COMPLETED;
         return false;
     }
 
@@ -145,10 +150,10 @@ bool FileOperation::handleWrite(short revents) {
 
 bool FileOperation::handleDelete() {
     if (unlink(path.c_str()) == -1) {
-        state = State::FAILED;
+        state = FILE_OP_FAILED;
         return false;
     }
-    state = State::COMPLETED;
+    state = FILE_OP_COMPLETED;
     return false;
 }
 
@@ -157,4 +162,4 @@ void FileOperation::cleanup() {
         close(fd);
         fd = -1;
     }
-} 
+}

@@ -6,12 +6,14 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 18:50:57 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/05 18:37:47 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:51:01 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "../../../incs/webserv.hpp"
 
-#include "Request.hpp"              // Local header
+#include "Request.hpp"
+
 #include "StringUtils.hpp"
 
 

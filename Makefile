@@ -6,7 +6,7 @@
 #    By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/01/09 18:38:40 by vzashev           #+#    #+#              #
-#    Updated: 2025/02/19 17:17:24 by vzashev          ###   ########.fr        #
+#    Updated: 2025/06/02 22:42:23 by vzashev          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,6 +24,7 @@ SRC = srcs/main.cpp \
       srcs/HTTP/srcs/Request.cpp \
       srcs/HTTP/srcs/Response.cpp \
       srcs/Utils/srcs/FileHandler.cpp \
+      srcs/Utils/srcs/FileOperation.cpp \
       srcs/Utils/srcs/StringUtils.cpp \
       srcs/Utils/srcs/MimeTypes.cpp
 

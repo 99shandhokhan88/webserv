@@ -6,18 +6,19 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/18 19:18:13 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/29 22:54:15 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:50:15 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+
+#include "../../../incs/webserv.hpp"
+
 #include "../incs/Client.hpp"
 #include "../incs/Server.hpp"
+
 #include "../../HTTP/incs/Response.hpp"
+
 #include "../../Config/incs/ServerConfig.hpp"
-#include <unistd.h>
-#include <cstring>
-#include <sys/socket.h>
-#include <errno.h>
 
 // ==================== IMPLEMENTAZIONE METODI HELPER PRIVATI ====================
 

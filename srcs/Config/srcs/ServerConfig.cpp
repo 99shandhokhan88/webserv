@@ -6,17 +6,18 @@
 /*   By: vzashev <vzashev@student.42roma.it>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/15 23:54:19 by vzashev           #+#    #+#             */
-/*   Updated: 2025/05/15 22:33:40 by vzashev          ###   ########.fr       */
+/*   Updated: 2025/06/02 22:49:42 by vzashev          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "../../../incs/webserv.hpp"
+
 #include "ServerConfig.hpp"
+
 #include "../../Utils/incs/FileHandler.hpp"
 #include "../../Config/incs/LocationConfig.hpp"
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <cstring>
+
+
 
 const std::set<std::string>& ServerConfig::getCgiExtensions() const {
     return _cgi_extensions;

@@ -1,14 +1,9 @@
+#include "../../../incs/webserv.hpp"
+
+
+
 #include "CGIExecutor.hpp"
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <cstdlib>
-#include <sstream>
-#include <string>
-#include <cstring>
-#include <iostream>
-#include <signal.h>
-#include <poll.h>
+
 #include "../../HTTP/incs/Request.hpp"
 #include "../../Config/incs/LocationConfig.hpp"
 #include "../../Utils/incs/FileHandler.hpp"
