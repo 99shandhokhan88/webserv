@@ -1,4 +1,3 @@
-
 #include "../../../incs/webserv.hpp"
 
 
@@ -100,19 +99,19 @@ bool FileHandler::isDirectory(const std::string& path) {
 }
 
 bool FileHandler::deleteFile(const std::string& path) {
-    if (!fileExists(path)) return false;
-    
-    FileOperation* op = new FileOperation(FILE_OP_DELETE, path);
-    addFileOperation(op);
-    
-    // Wait for operation to complete
-    while (!op->isCompleted() && !op->hasFailed()) {
-        handleFileOperations();
+    if (!fileExists(path)) {
+        std::cerr << "File does not exist: " << path << std::endl;
+        return false;
     }
     
-    bool success = op->isCompleted();
-    delete op;
-    return success;
+    // Direct synchronous delete for better reliability
+    if (unlink(path.c_str()) == 0) {
+        std::cout << "File deleted directly: " << path << std::endl;
+        return true;
+    } else {
+        std::cerr << "Failed to delete file " << path << ": " << strerror(errno) << std::endl;
+        return false;
+    }
 }
 
 bool FileHandler::deleteDirectory(const std::string& path) {

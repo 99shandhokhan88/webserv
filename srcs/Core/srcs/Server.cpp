@@ -977,6 +977,11 @@ void Server::parseMultipartBody(const std::string& body, const std::string& boun
 }
 
 void Server::handleDeleteRequest(Client* client) {
+    if (!client) {
+        std::cerr << "ERROR: NULL client in handleDeleteRequest" << std::endl;
+        return;
+    }
+
     try {
         const LocationConfig& location = servers[0]->config.getLocationForPath(client->request.getPath());
         std::cout << "=== DEBUG DELETE ===" << "\n"
@@ -1014,32 +1019,52 @@ void Server::handleDeleteRequest(Client* client) {
             return;
         }
 
+        // Security: Check if path is empty or dangerous
+        if (resolvedPath.empty() || resolvedPath == "/" || resolvedPath == serverRoot) {
+            std::cerr << "Dangerous delete path blocked: " << resolvedPath << std::endl;
+            sendErrorResponse(client, 403, "Forbidden: Cannot delete root directories", servers[0]->config);
+            return;
+        }
+
         // Check if the file exists
         if (!FileHandler::fileExists(resolvedPath)) {
+            std::cout << "File not found: " << resolvedPath << std::endl;
             sendErrorResponse(client, 404, "File not found", servers[0]->config);
             return;
         }
 
-        // Try to delete the file
-        bool success;
-        if (FileHandler::isDirectory(resolvedPath)) {
-            success = FileHandler::deleteDirectory(resolvedPath);
-        } else {
-            success = FileHandler::deleteFile(resolvedPath);
+        // Try to delete the file with timeout protection
+        bool success = false;
+        try {
+            if (FileHandler::isDirectory(resolvedPath)) {
+                success = FileHandler::deleteDirectory(resolvedPath);
+            } else {
+                success = FileHandler::deleteFile(resolvedPath);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Delete operation failed: " << e.what() << std::endl;
+            success = false;
         }
 
         if (success) {
+            std::cout << "File deleted successfully: " << resolvedPath << std::endl;
             // Send success response
             std::string response = "HTTP/1.1 200 OK\r\n";
             response += "Content-Type: text/plain\r\n";
             response += "Content-Length: 7\r\n";
+            response += "Connection: close\r\n";
             response += "\r\n";
             response += "Deleted";
             
-            if (!safeSend(client, response)) {
-                removeClient(client->fd);
+            // Use direct send instead of safeSend to avoid double removal
+            ssize_t bytes_sent = send(client->fd, response.c_str(), response.size(), 0);
+            if (bytes_sent <= 0) {
+                std::cerr << "Failed to send delete response to client " << client->fd << std::endl;
             }
+            // Force close connection after DELETE to avoid keep-alive issues
+            removeClient(client->fd);
         } else {
+            std::cerr << "Failed to delete file: " << resolvedPath << std::endl;
             sendErrorResponse(client, 500, "Failed to delete file", servers[0]->config);
         }
     } catch (const std::exception& e) {
