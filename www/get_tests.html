@@ -11,13 +11,23 @@
             padding: 2rem;
             border-radius: 10px;
             margin-bottom: 2rem;
-            box-shadow: var(--card-shadow);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .test-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .test-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #4a90e2;
+        }
+        .test-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
         }
         .debug-output {
             background: #f8f9fa;
@@ -26,97 +36,11 @@
             margin-top: 1rem;
             font-family: monospace;
             white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
         }
-        .success { color: var(--secondary-color); }
-        .error { color: var(--accent-color); }
-
-        /* Nuovi stili per la galleria di file */
-        .file-gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        .file-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-            cursor: pointer;
-        }
-        .file-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .file-thumbnail {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
-            background: #eee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .file-name {
-            font-size: 0.9rem;
-            word-break: break-all;
-            margin-top: 0.5rem;
-        }
-        .file-preview {
-            margin-top: 2rem;
-            padding: 1rem;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .file-preview img {
-            max-width: 100%;
-            border-radius: 4px;
-        }
-        .file-preview pre {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 4px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-        }
-        .file-preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .file-preview-close {
-            background: #f44336;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-        }
-        
-        /* Stili per il messaggio di download */
-        .download-status {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #333;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .download-status p.success {
-            color: #4CAF50;
-        }
-        .download-status p.error {
-            color: #f44336;
-        }
+        .success { color: #2ecc71; }
+        .error { color: #e74c3c; }
     </style>
 </head>
 <body>
@@ -127,278 +51,101 @@
             <a href="/index.html" class="button button-primary">Back to Home</a>
         </header>
 
-        <!-- Uploads Gallery NEW SECTION -->
         <div class="test-section">
-            <h2>File Uploads Gallery</h2>
-            <p>Browse and view all uploaded files from the /uploads/ directory</p>
-            <button onclick="loadUploadsGallery()" class="button button-primary">Load Uploads Gallery</button>
-            <div id="uploads-gallery" class="file-gallery"></div>
-            <div id="file-preview" class="file-preview" style="display: none;"></div>
-        </div>
-
-        <!-- Static Files Test -->
-        <div class="test-section">
-            <h2>Static Files Test</h2>
-            <p>Test retrieving different types of static files</p>
+            <h2>GET Test Cases</h2>
             <div class="test-grid">
-                <button onclick="testFile('/css/styles.css')" class="button button-primary">Test CSS File</button>
-                <button onclick="testFile('/index.html')" class="button button-secondary">Test HTML File</button>
-                <button onclick="testFile('/test.txt')" class="button button-accent">Test Text File</button>
-            </div>
-            <div id="static-file-result" class="debug-output"></div>
-        </div>
+                <!-- Static Files -->
+                <div class="test-card">
+                    <h3>Static Files</h3>
+                    <p>Test retrieval of static files</p>
+                    <button onclick="testStaticFile()" class="button button-primary">Test Static File</button>
+                    <div id="static-file-result" class="debug-output"></div>
+                </div>
 
-        <!-- Query Parameters Test -->
-        <div class="test-section">
-            <h2>Query Parameters Test</h2>
-            <p>Test GET requests with different query parameters</p>
-            <div class="test-grid">
-                <button onclick="testQueryParams('name=Venelin')" class="button button-primary">
-                    Simple Parameter
-                </button>
-                <button onclick="testQueryParams('name=Venelin&action=test')" class="button button-secondary">
-                    Multiple Parameters
-                </button>
-                <button onclick="testQueryParams('special=' + encodeURIComponent('!@#$%'))" class="button button-accent">
-                    Special Characters
-                </button>
-            </div>
-            <div id="query-params-result" class="debug-output"></div>
-        </div>
+                <!-- Query Parameters -->
+                <div class="test-card">
+                    <h3>Query Parameters</h3>
+                    <p>Test handling of query strings</p>
+                    <button onclick="testQueryParams()" class="button button-secondary">Test Query Params</button>
+                    <div id="query-params-result" class="debug-output"></div>
+                </div>
 
-        <!-- Directory Listing Test -->
-        <div class="test-section">
-            <h2>Directory Listing Test</h2>
-            <p>Test autoindex functionality for different directories</p>
-            <div class="test-grid">
-                <button onclick="testDirectoryListing('/uploads/')" class="button button-primary">Uploads Directory</button>
-                <button onclick="testDirectoryListing('/cgi-bin/')" class="button button-secondary">CGI Directory</button>
-                <button onclick="testDirectoryListing('/css/')" class="button button-accent">CSS Directory</button>
-            </div>
-            <div id="directory-result" class="debug-output"></div>
-        </div>
+                <!-- Directory Listing -->
+                <div class="test-card">
+                    <h3>Directory Listing</h3>
+                    <p>Test autoindex functionality</p>
+                    <button onclick="testDirectoryListing()" class="button button-accent">Test Directory Listing</button>
+                    <div id="directory-listing-result" class="debug-output"></div>
+                </div>
 
-        <!-- Error Cases Test -->
-        <div class="test-section">
-            <h2>Error Cases Test</h2>
-            <p>Test various error scenarios</p>
-            <div class="test-grid">
-                <button onclick="testErrorCase('/nonexistent.html')" class="button button-primary">404 Not Found</button>
-                <button onclick="testErrorCase('/forbidden/')" class="button button-secondary">403 Forbidden</button>
-                <button onclick="testErrorCase('/cgi-bin/invalid.py')" class="button button-accent">500 Server Error</button>
+                <!-- Multi Parameters -->
+                <div class="test-card">
+                    <h3>Multi Parameters</h3>
+                    <p>Test multiple parameters handling</p>
+                    <button onclick="testMultiParams()" class="button button-primary">Test Multi Params</button>
+                    <div id="multi-params-result" class="debug-output"></div>
+                </div>
             </div>
-            <div id="error-result" class="debug-output"></div>
         </div>
 
         <script>
-            async function makeRequest(url, options = {}) {
-                try {
-                    const response = await fetch(url, options);
-                    let body;
-                    const contentType = response.headers.get('content-type');
-                    
-                    if (contentType && contentType.includes('application/json')) {
-                        body = await response.json();
-                    } else {
-                        body = await response.text();
-                    }
-
-                    return {
-                        status: response.status,
-                        statusText: response.statusText,
-                        headers: Object.fromEntries(response.headers),
-                        body: body,
-                        ok: response.ok
-                    };
-                } catch (error) {
-                    return {
-                        error: error.message,
-                        ok: false
-                    };
-                }
-            }
-
-            async function testFile(path) {
+            async function testStaticFile() {
                 const result = document.getElementById('static-file-result');
-                const response = await makeRequest(path);
-                
-                result.innerHTML = response.ok 
-                    ? `<div class="success">Status: ${response.status} ${response.statusText}</div>
-<div>Headers:</div>
-${Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}`
-                    : `<div class="error">Error: ${response.error || `Status: ${response.status} ${response.statusText}`}</div>`;
-            }
-
-            async function testQueryParams(queryString) {
-                const result = document.getElementById('query-params-result');
-                const response = await makeRequest(`/cgi-bin/info.py?${queryString}`);
-                
-                result.innerHTML = response.ok
-                    ? `<div class="success">Status: ${response.status} ${response.statusText}</div>
-<div>Query Parameters:</div>
-${queryString}
-<div>Response:</div>
-${typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)}`
-                    : `<div class="error">Error: ${response.error || `Status: ${response.status} ${response.statusText}`}</div>`;
-            }
-
-            async function testDirectoryListing(path) {
-                const result = document.getElementById('directory-result');
-                const response = await makeRequest(path);
-                
-                result.innerHTML = response.ok
-                    ? `<div class="success">Status: ${response.status} ${response.statusText}</div>
-<div>Directory Listing for ${path}:</div>
-${response.body}`
-                    : `<div class="error">Error: ${response.error || `Status: ${response.status} ${response.statusText}`}</div>`;
-            }
-
-            async function testErrorCase(path) {
-                const result = document.getElementById('error-result');
-                const response = await makeRequest(path);
-                
-                result.innerHTML = `<div class="${response.status >= 400 ? 'error' : 'success'}">
-Status: ${response.status} ${response.statusText}
-</div>
-<div>Headers:</div>
-${response.headers ? Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join('\n') : 'No headers'}
-<div>Response:</div>
-${typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)}`;
-            }
-
-            // Nuove funzioni per la galleria di file
-            async function loadUploadsGallery() {
-                const galleryElement = document.getElementById('uploads-gallery');
-                galleryElement.innerHTML = '<p>Caricamento file in corso...</p>';
-                
-                const response = await makeRequest('/uploads/');
-                
-                if (!response.ok) {
-                    galleryElement.innerHTML = `<p class="error">Errore nel caricamento dei file: ${response.error || response.status}</p>`;
-                    return;
-                }
-
-                // Parsing della risposta HTML per estrarre i link ai file
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(response.body, 'text/html');
-                const fileLinks = Array.from(doc.querySelectorAll('.file-list a')).filter(a => !a.textContent.includes('[DIR]'));
-                
-                if (fileLinks.length === 0) {
-                    galleryElement.innerHTML = '<p>Nessun file trovato nella directory uploads.</p>';
-                    return;
-                }
-
-                galleryElement.innerHTML = '';
-                
-                fileLinks.forEach(link => {
-                    const fileName = link.textContent;
-                    const filePath = link.getAttribute('href');
-                    const fileExtension = fileName.split('.').pop().toLowerCase();
-                    
-                    const card = document.createElement('div');
-                    card.className = 'file-card';
-                    card.onclick = () => previewFile(filePath, fileName, fileExtension);
-                    
-                    const thumbnail = document.createElement('div');
-                    thumbnail.className = 'file-thumbnail';
-                    
-                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
-                        // Immagine
-                        const img = document.createElement('img');
-                        img.src = filePath;
-                        img.alt = fileName;
-                        img.style = 'max-width: 100%; max-height: 100%;';
-                        thumbnail.appendChild(img);
-                    } else if (['txt', 'html', 'css', 'js', 'json', 'md'].includes(fileExtension)) {
-                        // File di testo
-                        thumbnail.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24"><path fill="#666" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>';
-                    } else {
-                        // Altro tipo di file
-                        thumbnail.innerHTML = '<svg width="50" height="50" viewBox="0 0 24 24"><path fill="#666" d="M14,2L20,8V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H14M18,20V9H13V4H6V20H18M12,12L16,16H13.5V19H10.5V16H8L12,12Z"/></svg>';
-                    }
-                    
-                    const nameElement = document.createElement('div');
-                    nameElement.className = 'file-name';
-                    nameElement.textContent = fileName;
-                    
-                    card.appendChild(thumbnail);
-                    card.appendChild(nameElement);
-                    galleryElement.appendChild(card);
-                });
-            }
-
-            async function previewFile(filePath, fileName, fileExtension) {
-                const previewElement = document.getElementById('file-preview');
-                previewElement.innerHTML = '<p>Caricamento anteprima...</p>';
-                previewElement.style.display = 'block';
-                
-                const headerHTML = `<div class="file-preview-header">
-                    <h3>${fileName}</h3>
-                    <button onclick="closePreview()" class="file-preview-close">Chiudi</button>
-                </div>`;
-                
-                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
-                    // Per le immagini, usiamo direttamente l'URL invece di fare una fetch
-                    previewElement.innerHTML = `${headerHTML}
-                        <img src="${filePath}" alt="${fileName}" style="max-width: 100%; max-height: 80vh;" />
-                        <p><button onclick="downloadFile('${filePath}', '${fileName}')" class="button button-primary">Scarica</button></p>`;
-                } else if (['txt', 'html', 'css', 'js', 'json', 'md'].includes(fileExtension)) {
-                    // Per i file di testo, facciamo una fetch normale
-                    try {
-                        const response = await fetch(filePath);
-                        if (!response.ok) {
-                            previewElement.innerHTML = `${headerHTML}<p class="error">Errore nel caricamento del file: ${response.status} ${response.statusText}</p>`;
-                            return;
-                        }
-                        const text = await response.text();
-                        previewElement.innerHTML = `${headerHTML}
-                            <pre>${text}</pre>
-                            <p><button onclick="downloadFile('${filePath}', '${fileName}')" class="button button-primary">Scarica</button></p>`;
-                    } catch (error) {
-                        previewElement.innerHTML = `${headerHTML}<p class="error">Errore nel caricamento del file: ${error.message}</p>`;
-                    }
-                } else {
-                    // Altri file
-                    previewElement.innerHTML = `${headerHTML}
-                        <p>Questo tipo di file non può essere visualizzato in anteprima.</p>
-                        <p><button onclick="downloadFile('${filePath}', '${fileName}')" class="button button-primary">Scarica</button></p>`;
-                }
-            }
-
-            // Nuova funzione per scaricare i file usando Fetch API e Blob
-            async function downloadFile(filePath, fileName) {
                 try {
-                    // Mostra un messaggio di download in corso
-                    const statusElement = document.createElement('div');
-                    statusElement.className = 'download-status';
-                    statusElement.innerHTML = '<p>Download in corso...</p>';
-                    document.body.appendChild(statusElement);
-                    
-                    // Metodo alternativo: apri l'URL in una nuova scheda o finestra
-                    // Questo bypassa i problemi di CORS e gestione blob
-                    window.open(filePath, '_blank');
-                    
-                    // Aggiorna il messaggio
-                    statusElement.innerHTML = '<p class="success">Download avviato in una nuova scheda!</p>';
-                    setTimeout(() => statusElement.remove(), 3000);
-                    
+                    const response = await fetch('/test.txt');
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<pre>${text}</pre>`;
                 } catch (error) {
-                    console.error('Errore durante il download:', error);
-                    const statusElement = document.createElement('div');
-                    statusElement.className = 'download-status';
-                    statusElement.innerHTML = `<p class="error">Errore nel download: ${error.message}</p>`;
-                    document.body.appendChild(statusElement);
-                    setTimeout(() => statusElement.remove(), 3000);
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
                 }
             }
 
-            function closePreview() {
-                document.getElementById('file-preview').style.display = 'none';
+            async function testQueryParams() {
+                const result = document.getElementById('query-params-result');
+                try {
+                    const response = await fetch('/test_query.html?name=John&age=30&city=New+York');
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<pre>${text}</pre>`;
+                } catch (error) {
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
             }
 
-            // Carica automaticamente la galleria all'apertura della pagina
-            document.addEventListener('DOMContentLoaded', loadUploadsGallery);
+            async function testDirectoryListing() {
+                const result = document.getElementById('directory-listing-result');
+                try {
+                    const response = await fetch('/uploads/');
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<pre>${escapeHtml(text)}</pre>`;
+                } catch (error) {
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            }
+
+            async function testMultiParams() {
+                const result = document.getElementById('multi-params-result');
+                try {
+                    const response = await fetch('/test_multi_params.html?param1=value1&param2=value2&param3=value3');
+                    const text = await response.text();
+                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
+<pre>${text}</pre>`;
+                } catch (error) {
+                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            }
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
         </script>
     </div>
 </body>
-</html> 
+</html>

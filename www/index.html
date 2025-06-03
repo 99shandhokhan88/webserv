@@ -1,125 +1,112 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webserv Test Suite</title>
+    <title>Webserv Project - 42</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Webserv Test Suite</h1>
-            <p class="subtitle">A comprehensive testing environment for our HTTP server implementation</p>
+        <header class="header">
+            <h1 class="project-title">WEBSERV PROJECT OF 42</h1>
+            <div class="authors">vzashev, fbiondo, mennaji</div>
+            <p class="subtitle">A modern HTTP/1.1 server implementation with comprehensive testing suite</p>
         </header>
 
-        <div class="card-grid">
-            <!-- POST Tests -->
-            <div class="card">
-                <div class="card-icon">
-                    <i class="fas fa-paper-plane"></i>
-                </div>
-                <h2>POST Method Tests</h2>
-                <p>Test different types of POST requests</p>
-                <ul class="feature-list">
-                    <li>Google-style Form</li>
-                    <li>Simple Message Post</li>
-                    <li>File Upload</li>
-                </ul>
-                <a href="/post_tests.html" class="button button-primary">Run POST Tests</a>
+        <section class="methods-section">
+            <div class="section-intro">
+                <h2>HTTP Method Testing</h2>
+                <p>Test all major HTTP methods with our comprehensive suite</p>
             </div>
+            
+            <div class="card-grid">
+                <!-- POST Tests -->
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+                    <h3>POST Method Tests</h3>
+                    <p>Test different types of POST requests and data submission</p>
+                    <ul class="feature-list">
+                        <li>Google-style Forms</li>
+                        <li>Simple Message Posts</li>
+                        <li>File Upload Handling</li>
+                        <li>JSON Data Processing</li>
+                    </ul>
+                    <a href="/post_tests.html" class="button button-primary">Run POST Tests</a>
+                </div>
 
-            <!-- GET Tests -->
-            <div class="card">
-                <div class="card-icon">
-                    <i class="fas fa-download"></i>
+                <!-- GET Tests -->
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <h3>GET Method Tests</h3>
+                    <p>Test various GET request scenarios and content delivery</p>
+                    <ul class="feature-list">
+                        <li>Static File Serving</li>
+                        <li>Query Parameter Handling</li>
+                        <li>Directory Listing</li>
+                        <li>Content Negotiation</li>
+                    </ul>
+                    <a href="/get_tests.html" class="button button-secondary">Run GET Tests</a>
                 </div>
-                <h2>GET Method Tests</h2>
-                <p>Test various GET request scenarios</p>
-                <ul class="feature-list">
-                    <li>Static Files</li>
-                    <li>Query Parameters</li>
-                    <li>Directory Listing</li>
-                </ul>
-                <a href="/get_tests.html" class="button button-secondary">Run GET Tests</a>
-            </div>
 
-            <!-- DELETE Tests -->
-            <div class="card">
-                <div class="card-icon">
-                    <i class="fas fa-trash-alt"></i>
+                <!-- DELETE Tests -->
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                    <h3>DELETE Method Tests</h3>
+                    <p>Test file deletion functionality and error handling</p>
+                    <ul class="feature-list">
+                        <li>File Deletion Operations</li>
+                        <li>Error Handling & Status Codes</li>
+                        <li>Permission Validation</li>
+                        <li>Security Compliance</li>
+                    </ul>
+                    <a href="/delete_tests.html" class="button button-accent">Run DELETE Tests</a>
                 </div>
-                <h2>DELETE Method Tests</h2>
-                <p>Test file deletion functionality</p>
-                <ul class="feature-list">
-                    <li>File Deletion</li>
-                    <li>Error Handling</li>
-                    <li>Permission Tests</li>
-                </ul>
-                <a href="/delete_tests.html" class="button button-accent">Run DELETE Tests</a>
             </div>
-        </div>
+        </section>
 
         <!-- CGI Tests Section -->
-        <div class="card">
-            <div class="card-icon">
-                <i class="fas fa-code"></i>
+        <section class="cgi-section">
+            <div class="cgi-card">
+                <div class="card-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h2>CGI Script Testing</h2>
+                <p class="cgi-description">
+                    Common Gateway Interface (CGI) allows our web server to execute external programs and scripts, 
+                    enabling dynamic content generation. Test CGI script execution across multiple programming languages 
+                    including Python, Bash, C++, and more.
+                </p>
+                <a href="/cgi.html" class="button button-success">Access CGI Testing Suite</a>
             </div>
-            <h2>CGI Script Tests</h2>
-            <p>Test CGI script execution in different languages (Python, Bash, C++, ...)</p>
-            <div class="cgi-grid">
-                <a href="/cgi.html" class="button button-primary">Vai alla pagina CGI (multi-linguaggio)</a>
-            </div>
-        </div>
+        </section>
 
+<!-- Replace the Test Resources section in index.html with this: -->
+<div class="card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1);">
+    <h2 style="color: white;">Test Resources</h2>
+    <p style="color: #cbd5e1;">Additional testing tools and resources</p>
+    <ul class="feature-list" style="color: #cbd5e1;">
+        <li>Error Pages Testing</li>
+        <li>Autoindex Logic Test</li>
+        <li>File Upload Interface</li>
+    </ul>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="/error_tests.html" class="button button-secondary">Test Error Pages</a>
+        <a href="/autoindex-test.html" class="button button-accent">Autoindex Test</a>
+    </div>
+</div>
+        </section>
 
-        <br>
-
-        
-        <!-- Additional Tools -->
-        <div class="card">
-            <h2>Test Resources</h2>
-            <p>Additional testing tools and resources</p>
-            <ul class="feature-list">
-                <li>File Upload Interface</li>
-                <li>Directory Browser</li>
-                <li>Error Pages</li>
-                <li>🔍 Autoindex Logic Test</li>
-            </ul>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <a href="/uploads/" class="button button-primary">Browse Files</a>
-                <a href="/errors/404.html" class="button button-secondary">Test 404</a>
-                <a href="/autoindex-test.html" class="button button-accent">🔍 Autoindex Test</a>
-            </div>
-        </div>
-
-        <footer>
-            <p>Webserv Project - HTTP/1.1 Server Implementation</p>
+        <footer class="footer">
+            <p>Webserv Project - HTTP/1.1 Server Implementation | École 42</p>
         </footer>
     </div>
-
-    <style>
-    .cgi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-top: 2rem;
-    }
-    .cgi-item {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 8px;
-        text-align: center;
-    }
-    .cgi-item h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-    }
-    .cgi-item i {
-        margin-right: 0.5rem;
-    }
-    </style>
 </body>
 </html>

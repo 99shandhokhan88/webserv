@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Page Tests - Webserv</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .error-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .error-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .error-card:hover {
+            transform: translateY(-5px);
+        }
+        .error-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .error-code {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        .error-403 { color: #e74c3c; }
+        .error-404 { color: #3498db; }
+        .error-405 { color: #f39c12; }
+        .error-500 { color: #9b59b6; }
+        .error-504 { color: #1abc9c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Error Page Tests</h1>
+            <p class="subtitle">Test custom error page handling</p>
+            <a href="/index.html" class="button button-primary">Back to Home</a>
+        </header>
+
+        <div class="test-section">
+            <h2>HTTP Error Tests</h2>
+            <div class="error-grid">
+                <!-- 403 Forbidden -->
+                <div class="error-card">
+                    <div class="error-code error-403">403</div>
+                    <h3>Forbidden</h3>
+                    <p>Test access to restricted resources</p>
+                    <a href="/errors/403.html" class="button button-primary">View Error Page</a>
+                </div>
+
+                <!-- 404 Not Found -->
+                <div class="error-card">
+                    <div class="error-code error-404">404</div>
+                    <h3>Not Found</h3>
+                    <p>Test handling of non-existent resources</p>
+                    <a href="/errors/404.html" class="button button-primary">View Error Page</a>
+                </div>
+
+                <!-- 405 Method Not Allowed -->
+                <div class="error-card">
+                    <div class="error-code error-405">405</div>
+                    <h3>Method Not Allowed</h3>
+                    <p>Test invalid HTTP method usage</p>
+                    <a href="/errors/405.html" class="button button-primary">View Error Page</a>
+                </div>
+
+                <!-- 500 Internal Server Error -->
+                <div class="error-card">
+                    <div class="error-code error-500">500</div>
+                    <h3>Internal Server Error</h3>
+                    <p>Test server-side error handling</p>
+                    <a href="/errors/500.html" class="button button-primary">View Error Page</a>
+                </div>
+
+                <!-- 504 Gateway Timeout -->
+                <div class="error-card">
+                    <div class="error-code error-504">504</div>
+                    <h3>Gateway Timeout</h3>
+                    <p>Test timeout error handling</p>
+                    <a href="/errors/504.html" class="button button-primary">View Error Page</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Trigger Actual Errors</h2>
+            <p>Test how the server handles real error conditions by simulating specific scenarios:</p>
+            
+            <div class="error-tests">
+                <!-- 404 Test -->
+                <div class="error-test">
+                    <div class="error-info">
+                        <h3>404 Not Found</h3>
+                        <div class="file-path">/non-existent-page-{timestamp}</div>
+                        <p>Requests a file that doesn't exist. Should return our custom 404 error page.</p>
+                    </div>
+                    <button onclick="trigger404()" class="button button-secondary">Trigger 404</button>
+                </div>
+        
+                <!-- 403 Test -->
+                <div class="error-test">
+                    <div class="error-info">
+                        <h3>403 Forbidden</h3>
+                        <div class="file-path">/cgi-bin/restricted-file</div>
+                        <p>Attempts to access a CGI script without execute permissions. Should return our custom 403 error page.</p>
+                    </div>
+                    <button onclick="trigger403()" class="button button-secondary">Trigger 403</button>
+                </div>
+        
+                <!-- 500 Test -->
+                <div class="error-test">
+                    <div class="error-info">
+                        <h3>500 Internal Server Error</h3>
+                        <div class="file-path">/cgi-bin/invalid.py</div>
+                        <p>Requests a CGI script with syntax errors. Should return our custom 500 error page.</p>
+                    </div>
+                    <button onclick="trigger500()" class="button button-secondary">Trigger 500</button>
+                </div>
+        
+                <!-- 504 Test -->
+                <div class="error-test">
+                    <div class="error-info">
+                        <h3>504 Gateway Timeout</h3>
+                        <div class="file-path">/cgi-bin/timeout.py</div>
+                        <p>Requests a CGI script that exceeds the server timeout. Should return our custom 504 error page.</p>
+                    </div>
+                    <button onclick="trigger504()" class="button button-secondary">Trigger 504</button>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            .error-tests {
+                display: grid;
+                gap: 1.5rem;
+                margin-top: 1.5rem;
+            }
+            
+            .error-test {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1.5rem;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                border-left: 4px solid;
+            }
+            
+            .error-test:nth-child(1) { border-left-color: #3498db; }
+            .error-test:nth-child(2) { border-left-color: #e74c3c; }
+            .error-test:nth-child(3) { border-left-color: #9b59b6; }
+            .error-test:nth-child(4) { border-left-color: #1abc9c; }
+            
+            .error-info {
+                flex: 1;
+            }
+            
+            .error-info h3 {
+                margin-top: 0;
+                margin-bottom: 0.5rem;
+                font-size: 1.25rem;
+            }
+            
+            .file-path {
+                font-family: monospace;
+                background: rgba(0, 0, 0, 0.2);
+                padding: 0.5rem;
+                border-radius: 4px;
+                margin: 0.5rem 0;
+                font-size: 0.9rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .error-info p {
+                margin: 0.5rem 0 0;
+                font-size: 0.95rem;
+                opacity: 0.9;
+            }
+            
+            .button {
+                margin-left: 1rem;
+                min-width: 140px;
+            }
+            
+            @media (max-width: 768px) {
+                .error-test {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+                
+                .button {
+                    margin-left: 0;
+                    margin-top: 1rem;
+                    width: 100%;
+                }
+            }
+        </style>
+        
+        <script>
+            function trigger404() {
+                window.location = '/non-existent-page-' + Date.now();
+            }
+        
+            function trigger403() {
+                window.location = '/cgi-bin/restricted-file';
+            }
+        
+            function trigger500() {
+                window.location = '/cgi-bin/invalid.py';
+            }
+        
+            function trigger504() {
+                window.location = '/cgi-bin/timeout.py';
+            }
+        </script>
+    </div>
+</body>
+</html>

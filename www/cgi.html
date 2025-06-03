@@ -3,142 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CGI Implementations</title>
+    <title>CGI Implementations | Webserv Project</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --python-color: #2196F3;
-            --shell-color: #FF5722;
-            --php-color: #9C27B0;
+            --python-gradient: linear-gradient(135deg, #4361ee, #3a0ca3);
+            --shell-gradient: linear-gradient(135deg, #06d6a0, #048a81);
+            --php-gradient: linear-gradient(135deg, #ff6b6b, #d00000);
+            --perl-gradient: linear-gradient(135deg, #9c27b0, #673ab7);
+            --dark-bg: #0f172a;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-dark: #1e293b;
+            --text-light: #f8fafc;
+            --glow-python: 0 0 15px rgba(67, 97, 238, 0.4);
+            --glow-shell: 0 0 15px rgba(6, 214, 160, 0.4);
+            --glow-php: 0 0 15px rgba(255, 107, 107, 0.4);
+            --glow-perl: 0 0 15px rgba(156, 39, 176, 0.4);
         }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
+
+        * {
             margin: 0;
-            padding: 20px;
-            background: #f0f2f5;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            background: var(--dark-bg);
+            color: var(--text-light);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(67, 97, 238, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 107, 107, 0.1) 0%, transparent 20%);
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
         header {
             text-align: center;
-            margin-bottom: 40px;
-            padding: 20px;
-            background: #1a1a1a;
-            color: white;
-            border-radius: 8px;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #4361ee, #3a0ca3);
+            border-radius: 16px;
+            box-shadow: var(--glow-python);
             position: relative;
+            overflow: hidden;
         }
-        
+
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+            transform: rotate(30deg);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
         .home-button {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: white;
-            color: #1a1a1a;
-            padding: 8px 16px;
-            border-radius: 4px;
+            background: var(--card-bg);
+            color: var(--python-gradient);
+            padding: 10px 20px;
+            border-radius: 50px;
             text-decoration: none;
-            font-weight: bold;
-            transition: opacity 0.2s;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-        
+
         .home-button:hover {
-            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
         }
-        
+
         .cgi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
+            gap: 2rem;
+            margin-bottom: 3rem;
         }
-        
+
         .cgi-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            border-top: 4px solid;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: var(--text-dark);
+            position: relative;
+            overflow: hidden;
+            border-top: 4px solid transparent;
         }
-        
-        .python { border-color: var(--python-color); }
-        .shell { border-color: var(--shell-color); }
-        .php { border-color: var(--php-color); }
-        
+
+        .cgi-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+        }
+
+        .cgi-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .python::before { background: var(--python-gradient); }
+        .shell::before { background: var(--shell-gradient); }
+        .php::before { background: var(--php-gradient); }
+        .perl::before { background: var(--perl-gradient); }
+
+        .python:hover { box-shadow: var(--glow-python); }
+        .shell:hover { box-shadow: var(--glow-shell); }
+        .php:hover { box-shadow: var(--glow-php); }
+        .perl:hover { box-shadow: var(--glow-perl); }
+
         .cgi-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
         }
-        
+
+        .cgi-icon {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, currentColor, #1e293b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
         .cgi-description {
-            color: #666;
-            margin: 10px 0;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
         }
-        
+
         .features {
-            margin: 15px 0;
+            margin: 1.5rem 0;
         }
-        
+
         .features ul {
             list-style-type: none;
             padding: 0;
             margin: 0;
         }
-        
+
         .features li {
-            margin: 5px 0;
-            padding-left: 20px;
+            margin: 10px 0;
+            padding-left: 25px;
             position: relative;
+            font-size: 1rem;
         }
-        
+
         .features li::before {
-            content: "✓";
+            content: "•";
             position: absolute;
             left: 0;
-            color: #4CAF50;
+            color: #4361ee;
+            font-size: 1.8rem;
+            line-height: 0;
         }
-        
+
         .test-button {
             display: inline-block;
-            padding: 10px 20px;
-            color: white;
+            padding: 12px 25px;
+            border-radius: 50px;
             text-decoration: none;
-            border-radius: 4px;
-            font-weight: bold;
-            margin-top: auto;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 1rem;
             text-align: center;
-            transition: opacity 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            min-width: 180px;
+            margin-top: 10px;
         }
-        
+
+        .test-button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .test-button:hover::before {
+            opacity: 1;
+        }
+
         .test-button:hover {
-            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        }
+
+        .python .test-button { 
+            background: var(--python-gradient);
+            color: white;
         }
         
-        .python .test-button { background: var(--python-color); }
-        .shell .test-button { background: var(--shell-color); }
-        .php .test-button { background: var(--php-color); }
+        .shell .test-button { 
+            background: var(--shell-gradient);
+            color: white;
+        }
         
+        .php .test-button { 
+            background: var(--php-gradient);
+            color: white;
+        }
+        
+        .perl .test-button { 
+            background: var(--perl-gradient);
+            color: white;
+        }
+
         footer {
             text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-            color: #666;
-            border-top: 1px solid #ddd;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        footer::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: var(--python-gradient);
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -146,15 +271,16 @@
     <div class="container">
         <header>
             <h1>CGI Implementations</h1>
-            <p>Test different CGI implementations (Python, Shell, PHP). Il server seleziona automaticamente l'interprete corretto in base all'estensione dello script!</p>
-            <a href="/index.html" class="home-button">Return to Home</a>
+            <p>Test different CGI implementations (Python, Shell, PHP, Perl). The server automatically selects the correct interpreter based on the script extension!</p>
+            <a href="/index.html" class="home-button">🏠 Return to Home</a>
         </header>
 
         <div class="cgi-grid">
+            <!-- Python CGI -->
             <div class="cgi-card python">
                 <div class="cgi-title">
-                    <span>🐍</span>
-                    Python CGI
+                    <div class="cgi-icon">🐍</div>
+                    <h2>Python CGI</h2>
                 </div>
                 <div class="cgi-description">
                     Modern Python implementation with comprehensive features
@@ -170,10 +296,11 @@
                 <a href="/cgi-bin/info.py" class="test-button">Test Python CGI</a>
             </div>
 
+            <!-- Shell CGI -->
             <div class="cgi-card shell">
                 <div class="cgi-title">
-                    <span>🐚</span>
-                    Shell CGI
+                    <div class="cgi-icon">🐚</div>
+                    <h2>Shell CGI</h2>
                 </div>
                 <div class="cgi-description">
                     Matrix-style terminal interface with system commands
@@ -189,10 +316,11 @@
                 <a href="/cgi-bin/info.sh" class="test-button">Test Shell CGI</a>
             </div>
 
+            <!-- PHP CGI -->
             <div class="cgi-card php">
                 <div class="cgi-title">
-                    <span>🐘</span>
-                    PHP CGI
+                    <div class="cgi-icon">🐘</div>
+                    <h2>PHP CGI</h2>
                 </div>
                 <div class="cgi-description">
                     Epic easter egg hunt with multiple hidden features
@@ -207,11 +335,32 @@
                 </div>
                 <a href="/cgi-bin/info.php" class="test-button">Test PHP CGI</a>
             </div>
+
+            <!-- Perl CGI -->
+            <div class="cgi-card perl">
+                <div class="cgi-title">
+                    <div class="cgi-icon">🦬</div>
+                    <h2>Perl CGI</h2>
+                </div>
+                <div class="cgi-description">
+                    Classic Perl implementation with powerful text processing
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Text manipulation features</li>
+                        <li>Environment variables</li>
+                        <li>HTTP headers analysis</li>
+                        <li>Classic CGI experience</li>
+                    </ul>
+                </div>
+                <a href="/cgi-bin/info.pl" class="test-button">Test Perl CGI</a>
+            </div>
         </div>
 
         <footer>
-            <p>CGI Test Interface - Python, Shell & PHP implementations</p>
+            <p>CGI Test Interface - Python, Shell, PHP & Perl implementations</p>
+            <p>Webserv Project | 42 School</p>
         </footer>
     </div>
 </body>
-</html> 
+</html>

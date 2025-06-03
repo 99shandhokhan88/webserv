@@ -4,143 +4,422 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DELETE Method Tests - Webserv</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            color: #bdc3c7;
+        }
+        
+        .button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 25px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button i {
+            font-size: 1.1rem;
+        }
+        
         .test-section {
-            background: white;
-            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #3498db;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .test-section h2 i {
+            font-size: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #bdc3c7;
+            font-size: 1.1rem;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 15px;
             border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: var(--card-shadow);
+            font-size: 1.1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
         }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+        
+        .button-delete {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        
+        .button-delete:hover {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+        }
+        
         .file-list {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 4px;
-            margin: 1rem 0;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
         }
+        
         .file-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem;
-            border-bottom: 1px solid #ddd;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background 0.3s ease;
         }
+        
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
         .file-item:last-child {
             border-bottom: none;
         }
+        
+        .file-name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+        
         .debug-output {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-top: 1rem;
-            font-family: monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 25px;
+            font-family: 'Courier New', monospace;
             white-space: pre-wrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 1rem;
+            line-height: 1.5;
         }
-        .success { color: var(--secondary-color); }
-        .error { color: var(--accent-color); }
-        .form-group {
-            margin-bottom: 1rem;
+        
+        .success {
+            color: #2ecc71;
+            font-weight: 600;
         }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
+        
+        .error {
+            color: #e74c3c;
+            font-weight: 600;
         }
-        .form-group input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        
+        .loading {
+            color: #3498db;
+            font-weight: 600;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        .status-success {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+        
+        .status-error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+        
+        .file-icon {
+            color: #3498db;
+        }
+        
+        .section-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-align: center;
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+        
+        .instructions ol {
+            padding-left: 25px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .file-name {
+                max-width: 100%;
+            }
+            
+            .button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>DELETE Method Tests</h1>
-            <p class="subtitle">Test file deletion functionality</p>
-            <a href="/index.html" class="button button-primary">Back to Home</a>
+            <h1><i class="fas fa-trash-alt"></i> DELETE Method Tests</h1>
+            <p class="subtitle">Test file deletion functionality in your Webserv implementation</p>
+            <a href="/index.html" class="button"><i class="fas fa-home"></i> Back to Home</a>
         </header>
+
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> How to Use This Tool</h3>
+            <ol>
+                <li>Create test files using the form below</li>
+                <li>Delete files individually using the delete buttons</li>
+                <li>Test specific paths using the manual delete form</li>
+                <li>Check server responses in the debug output areas</li>
+            </ol>
+        </div>
 
         <!-- Create Test File Section -->
         <div class="test-section">
-            <h2>Create Test File</h2>
-            <p>Create a file to test deletion</p>
+            <div class="section-icon">
+                <i class="fas fa-file-circle-plus"></i>
+            </div>
+            <h2><i class="fas fa-plus-circle"></i> Create Test File</h2>
+            <p>Create a file to test deletion functionality</p>
             <form id="create-file-form">
                 <div class="form-group">
-                    <label for="file-content">File Content:</label>
-                    <input type="text" id="file-content" value="This is a test file" required>
+                    <label for="file-content"><i class="fas fa-font"></i> File Content:</label>
+                    <input type="text" id="file-content" value="This is a test file for DELETE method" required>
                 </div>
-                <button type="submit" class="button button-primary">Create Test File</button>
+                <button type="submit" class="button"><i class="fas fa-save"></i> Create Test File</button>
             </form>
-            <div id="create-result" class="debug-output"></div>
+            <div id="create-result" class="debug-output">Results will appear here after file creation</div>
         </div>
 
         <!-- Delete File Section -->
         <div class="test-section">
-            <h2>Delete File Test</h2>
-            <p>Test deleting files from the uploads directory</p>
-            <div class="file-list" id="file-list">
-                Loading files...
+            <div class="section-icon">
+                <i class="fas fa-trash"></i>
             </div>
-            <div id="delete-result" class="debug-output"></div>
+            <h2><i class="fas fa-list"></i> Delete Files</h2>
+            <p>Select a file to delete from the uploads directory</p>
+            <div class="file-list" id="file-list">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading files...</div>
+            </div>
+            <div id="delete-result" class="debug-output">Delete results will appear here</div>
         </div>
 
         <!-- Manual Delete Test -->
         <div class="test-section">
-            <h2>Manual Delete Test</h2>
+            <div class="section-icon">
+                <i class="fas fa-keyboard"></i>
+            </div>
+            <h2><i class="fas fa-keyboard"></i> Manual Delete Test</h2>
             <p>Test deletion with a specific path</p>
             <form id="manual-delete-form">
                 <div class="form-group">
-                    <label for="delete-path">Path to Delete:</label>
+                    <label for="delete-path"><i class="fas fa-folder-open"></i> Path to Delete:</label>
                     <input type="text" id="delete-path" value="/uploads/test.txt" required>
                 </div>
-                <button type="submit" class="button button-accent">Delete File</button>
+                <button type="submit" class="button button-delete"><i class="fas fa-trash-alt"></i> Delete File</button>
             </form>
-            <div id="manual-delete-result" class="debug-output"></div>
+            <div id="manual-delete-result" class="debug-output">Manual delete results will appear here</div>
         </div>
 
         <script>
             // Function to refresh file list
             async function refreshFileList() {
+                const fileList = document.getElementById('file-list');
+                fileList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading files...</div>';
+                
                 try {
                     const response = await fetch('/uploads/');
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to load files: ${response.status} ${response.statusText}`);
+                    }
+                    
                     const html = await response.text();
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    const files = Array.from(doc.querySelectorAll('a'))
-                        .filter(a => !a.href.endsWith('/'))
+                    const links = doc.querySelectorAll('a');
+                    
+                    const files = Array.from(links)
+                        .filter(a => !a.href.endsWith('/') && !a.textContent.includes('Parent Directory'))
                         .map(a => a.textContent);
 
-                    const fileList = document.getElementById('file-list');
                     if (files.length === 0) {
-                        fileList.innerHTML = '<p>No files found</p>';
+                        fileList.innerHTML = '<div class="file-item">No files found in uploads directory</div>';
                         return;
                     }
 
-                    fileList.innerHTML = files.map(file => `
-                        <div class="file-item">
-                            <span>${file}</span>
-                            <button onclick="deleteFile('/uploads/${file}')" class="button button-accent">Delete</button>
-                        </div>
-                    `).join('');
+                    fileList.innerHTML = '';
+                    files.forEach(file => {
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        item.innerHTML = `
+                            <div class="file-name"><i class="fas fa-file file-icon"></i> ${file}</div>
+                            <button class="button button-delete" data-file="${file}"><i class="fas fa-trash-alt"></i> Delete</button>
+                        `;
+                        fileList.appendChild(item);
+                    });
+                    
+                    // Add event listeners to all delete buttons
+                    document.querySelectorAll('.button-delete[data-file]').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const file = this.getAttribute('data-file');
+                            deleteFile(`/uploads/${file}`);
+                        });
+                    });
                 } catch (error) {
-                    document.getElementById('file-list').innerHTML = `<p class="error">Error loading files: ${error.message}</p>`;
+                    fileList.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
+                    console.error('File list error:', error);
                 }
             }
 
             // Function to delete a file
             async function deleteFile(path) {
                 const result = document.getElementById('delete-result');
+                result.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Deleting file...</div>';
+                
                 try {
                     const response = await fetch(path, { method: 'DELETE' });
+                    
+                    if (!response.ok) {
+                        throw new Error(`DELETE failed: ${response.status} ${response.statusText}`);
+                    }
+                    
                     const text = await response.text();
-                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
-<div>Response:</div>
-${text}`;
+                    result.innerHTML = `
+                        <div class="success"><i class="fas fa-check-circle"></i> File deleted successfully!</div>
+                        <div class="status-badge status-success">Status: ${response.status} ${response.statusText}</div>
+                        <div><strong>Response:</strong></div>
+                        <pre>${text}</pre>
+                    `;
+                    
                     refreshFileList();
                 } catch (error) {
-                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                    result.innerHTML = `<div class="error"><i class="fas fa-times-circle"></i> ${error.message}</div>`;
+                    console.error('Delete error:', error);
                 }
             }
 
@@ -149,20 +428,30 @@ ${text}`;
                 e.preventDefault();
                 const content = document.getElementById('file-content').value;
                 const result = document.getElementById('create-result');
+                result.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Creating file...</div>';
                 
                 try {
                     const response = await fetch('/uploads/test.txt', {
                         method: 'POST',
                         body: content
                     });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Create failed: ${response.status} ${response.statusText}`);
+                    }
+                    
                     const text = await response.text();
-                    result.innerHTML = `<div class="success">File created successfully</div>
-<div>Status: ${response.status} ${response.statusText}</div>
-<div>Response:</div>
-${text}`;
+                    result.innerHTML = `
+                        <div class="success"><i class="fas fa-check-circle"></i> File created successfully!</div>
+                        <div class="status-badge status-success">Status: ${response.status} ${response.statusText}</div>
+                        <div><strong>Response:</strong></div>
+                        <pre>${text}</pre>
+                    `;
+                    
                     refreshFileList();
                 } catch (error) {
-                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                    result.innerHTML = `<div class="error"><i class="fas fa-times-circle"></i> ${error.message}</div>`;
+                    console.error('Create error:', error);
                 }
             });
 
@@ -171,16 +460,27 @@ ${text}`;
                 e.preventDefault();
                 const path = document.getElementById('delete-path').value;
                 const result = document.getElementById('manual-delete-result');
+                result.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Deleting file...</div>';
                 
                 try {
                     const response = await fetch(path, { method: 'DELETE' });
+                    
+                    if (!response.ok) {
+                        throw new Error(`DELETE failed: ${response.status} ${response.statusText}`);
+                    }
+                    
                     const text = await response.text();
-                    result.innerHTML = `<div class="success">Status: ${response.status} ${response.statusText}</div>
-<div>Response:</div>
-${text}`;
+                    result.innerHTML = `
+                        <div class="success"><i class="fas fa-check-circle"></i> File deleted successfully!</div>
+                        <div class="status-badge status-success">Status: ${response.status} ${response.statusText}</div>
+                        <div><strong>Response:</strong></div>
+                        <pre>${text}</pre>
+                    `;
+                    
                     refreshFileList();
                 } catch (error) {
-                    result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                    result.innerHTML = `<div class="error"><i class="fas fa-times-circle"></i> ${error.message}</div>`;
+                    console.error('Manual delete error:', error);
                 }
             });
 
@@ -189,4 +489,4 @@ ${text}`;
         </script>
     </div>
 </body>
-</html> 
+</html>
