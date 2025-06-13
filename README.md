@@ -1210,9 +1210,9 @@ siege -b -c 50 -r 200 http://localhost:8080/
 
 ---
 
-**👨‍💻 Developed by [Your Name] as part of 42 School curriculum**
-**📧 Contact: [your.email@example.com]**
-**🔗 Repository: [GitHub Link]**
+**👨‍💻 Developed by [Vzashev, Fbiondo, Mennaji] as part of 42 School curriculum**
+**📧 Contact: [vzashev@student.42roma.it]**
+**🔗 Repository: [https://github.com/99shandhokhan88/webserv]**
 ```
 
 ---
